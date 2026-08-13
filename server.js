@@ -46,7 +46,7 @@ const paymentUpload = multer({
 app.set('trust proxy', 1);
 
 // ===== DOMAIN CONFIG =====
-const BASE_URL = (process.env.BASE_URL || 'https://thispersonisbrandshortner.com').replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || 'https://thispersonisbrandshortner.world').replace(/\/$/, '');
 const BASE_HOST = new URL(BASE_URL).hostname.toLowerCase();
 const CUSTOM_DOMAINS = [
   process.env.DOMAIN_1, process.env.DOMAIN_2, process.env.DOMAIN_3,
