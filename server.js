@@ -24,9 +24,9 @@ const PLAN_1_PRICE = Math.max(1, Number(process.env.PLAN_1_PRICE || 100));
 const PLAN_3_PRICE = Math.max(1, Number(process.env.PLAN_3_PRICE || 250));
 const PLAN_1_USD = Number(process.env.PLAN_1_USD || 0.81);
 const PLAN_3_USD = Number(process.env.PLAN_3_USD || 2.02);
-const BKASH_NUMBER = String(process.env.BKASH_NUMBER || 'Set in Railway Variables');
-const NAGAD_NUMBER = String(process.env.NAGAD_NUMBER || 'Set in Railway Variables');
-const BINANCE_ID = String(process.env.BINANCE_ID || 'Set in Railway Variables');
+const BKASH_NUMBER = String(process.env.BKASH_NUMBER || '').trim();
+const NAGAD_NUMBER = String(process.env.NAGAD_NUMBER || '').trim();
+const BINANCE_ID = String(process.env.BINANCE_ID || '').trim();
 const API_RATE_LIMIT = Math.max(10, Number(process.env.API_RATE_LIMIT || 120));
 const AUTO_BACKUP_HOURS = Math.max(1, Number(process.env.AUTO_BACKUP_HOURS || 24));
 const BLOCKED_DOMAINS = String(process.env.BLOCKED_DOMAINS || '')
@@ -558,6 +558,10 @@ async function adminMiddleware(req,res,next){
   }
 }
 function expectedPlanAmount(months){ return Number(months) === 3 ? PLAN_3_PRICE : PLAN_1_PRICE; }
+function paymentConfig(){ return {
+  bkashNumber:BKASH_NUMBER, nagadNumber:NAGAD_NUMBER, binanceId:BINANCE_ID,
+  bkashConfigured:!!BKASH_NUMBER, nagadConfigured:!!NAGAD_NUMBER, binanceConfigured:!!BINANCE_ID
+}; }
 
 async function getActiveOnlineUsers(){
   await pool.query("DELETE FROM online_users WHERE last_seen < NOW() - INTERVAL '5 minutes'");
@@ -1008,14 +1012,24 @@ app.get('/plans', authMiddleware, async (req,res)=>{
     const active = await getActiveOnlineUsers();
     const payments = await pool.query('SELECT id,plan_months,amount,method,transaction_id,status,admin_note,created_at,reviewed_at FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[req.user.id]);
     const user = await getUserById(req.user.id);
+    const pay = paymentConfig();
     res.render('index',{
       page:'plans',user,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,
       customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL,
-      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID,
+      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,
+      bkashNumber:pay.bkashNumber,nagadNumber:pay.nagadNumber,binanceId:pay.binanceId,
+      bkashConfigured:pay.bkashConfigured,nagadConfigured:pay.nagadConfigured,binanceConfigured:pay.binanceConfigured,
       paymentHistory:payments.rows
     });
   } catch(e){ console.error('Plans page error:',e); res.redirect('/dashboard?error='+encodeURIComponent('Could not load plans')); }
+});
+
+app.get('/api/payment-config-status', authMiddleware, async(req,res)=>{
+  try{
+    const p=paymentConfig();
+    res.json({bkash:p.bkashConfigured?'SET':'MISSING',nagad:p.nagadConfigured?'SET':'MISSING',binance:p.binanceConfigured?'SET':'MISSING'});
+  }catch(e){res.status(500).json({error:'Could not read payment configuration'});}
 });
 
 app.post('/payments', authMiddleware, paymentUpload.single('screenshot'), async (req,res)=>{
