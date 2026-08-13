@@ -2015,6 +2015,9 @@
             }
         }
 
+
+        .payment-config-status{display:flex;gap:.45rem;flex-wrap:wrap;margin:.2rem 0 .9rem}.payment-config-status span{padding:.3rem .52rem;border-radius:999px;font-size:.61rem;font-weight:800;border:1px solid rgba(255,255,255,.1)}.payment-config-status .ok{color:#8CFFD1;background:rgba(51,230,161,.07);border-color:rgba(51,230,161,.18)}.payment-config-status .missing{color:#FFD0D8;background:rgba(255,94,122,.07);border-color:rgba(255,94,122,.18)}
+
 </style>
 </head>
 <body>
@@ -3044,18 +3047,25 @@
                     <span class="payment-secure"><i class="fas fa-shield-halved"></i> Admin Verified</span>
                 </div>
 
+                
+                <div class="payment-config-status">
+                    <span class="<%= (typeof bkashConfigured !== 'undefined' && bkashConfigured) ? 'ok' : 'missing' %>">bKash: <%= (typeof bkashConfigured !== 'undefined' && bkashConfigured) ? 'Connected' : 'Not configured' %></span>
+                    <span class="<%= (typeof nagadConfigured !== 'undefined' && nagadConfigured) ? 'ok' : 'missing' %>">Nagad: <%= (typeof nagadConfigured !== 'undefined' && nagadConfigured) ? 'Connected' : 'Not configured' %></span>
+                    <span class="<%= (typeof binanceConfigured !== 'undefined' && binanceConfigured) ? 'ok' : 'missing' %>">Binance: <%= (typeof binanceConfigured !== 'undefined' && binanceConfigured) ? 'Connected' : 'Not configured' %></span>
+                </div>
+
                 <div class="payment-method-cards">
                     <div class="payment-method-card bkash">
                         <div class="payment-method-title">bKash</div>
-                        <div class="copy-payment-row"><strong id="bkashCopyValue"><%= bkashNumber %></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('bkashCopyValue','bKash number copied')"><i class="fas fa-copy"></i> Copy</button></div><span>⚠️ Send Money only</span>
+                        <div class="copy-payment-row"><strong id="bkashCopyValue"><%= (typeof bkashNumber !== "undefined" && bkashNumber) ? bkashNumber : "Not configured" %></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('bkashCopyValue','bKash number copied')"><i class="fas fa-copy"></i> Copy</button></div><span>⚠️ Send Money only</span>
                     </div>
                     <div class="payment-method-card nagad">
                         <div class="payment-method-title">Nagad</div>
-                        <div class="copy-payment-row"><strong id="nagadCopyValue"><%= nagadNumber %></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('nagadCopyValue','Nagad number copied')"><i class="fas fa-copy"></i> Copy</button></div><span>⚠️ Send Money only</span>
+                        <div class="copy-payment-row"><strong id="nagadCopyValue"><%= (typeof nagadNumber !== "undefined" && nagadNumber) ? nagadNumber : "Not configured" %></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('nagadCopyValue','Nagad number copied')"><i class="fas fa-copy"></i> Copy</button></div><span>⚠️ Send Money only</span>
                     </div>
                     <div class="payment-method-card binance">
                         <div class="payment-method-title">Binance</div>
-                        <div class="copy-payment-row"><strong>Binance ID: <span id="binanceCopyValue"><%= typeof binanceId !== 'undefined' ? binanceId : 'Set in Railway Variables' %></span></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('binanceCopyValue','Binance ID copied')"><i class="fas fa-copy"></i> Copy</button></div>
+                        <div class="copy-payment-row"><strong>Binance ID: <span id="binanceCopyValue"><%= (typeof binanceId !== 'undefined' && binanceId) ? binanceId : 'Not configured' %></span></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('binanceCopyValue','Binance ID copied')"><i class="fas fa-copy"></i> Copy</button></div>
                         <span>USD plan amount: 1 Month ≈ $<%= Number(plan1Usd).toFixed(2) %> • 3 Months ≈ $<%= Number(plan3Usd).toFixed(2) %><br>Submit Order ID + payment screenshot</span>
                     </div>
                 </div>
@@ -3847,7 +3857,7 @@
 
         function copyPaymentValue(elementId, successMessage) {
             var el=document.getElementById(elementId); if(!el)return;
-            var value=(el.textContent||'').trim();
+            var value=(el.textContent||'').trim(); if(!value || value==='Not configured'){ if(typeof showToast==='function') showToast('Payment info is not configured','error'); return; }
             function done(){ if(typeof showToast==='function') showToast(successMessage||'Copied','success'); }
             if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(value).then(done).catch(function(){fallbackCopy(value,done);});}
             else fallbackCopy(value,done);
