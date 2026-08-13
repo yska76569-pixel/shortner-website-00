@@ -46,7 +46,7 @@ const paymentUpload = multer({
 app.set('trust proxy', 1);
 
 // ===== DOMAIN CONFIG =====
-const BASE_URL = (process.env.BASE_URL || 'https://thispersonisbrandshortner.world').replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || 'https://thispersonisbrandshortner.com').replace(/\/$/, '');
 const BASE_HOST = new URL(BASE_URL).hostname.toLowerCase();
 const CUSTOM_DOMAINS = [
   process.env.DOMAIN_1, process.env.DOMAIN_2, process.env.DOMAIN_3,
@@ -803,13 +803,46 @@ app.post('/shorten',authMiddleware,async(req,res)=>{
 // ===== QR =====
 app.get('/qr/:code',async(req,res)=>{
   try {
-    const host=normalizeHost(req.query.domain||req.get('host')||BASE_HOST);
-    const q=await pool.query('SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 ORDER BY id DESC LIMIT 1',[host,req.params.code]);
-    if(!q.rowCount)return res.status(404).json({error:'Link not found'});
-    const link=mapLink(q.rows[0]),url=buildShortUrl(link);
-    const qr=await QRCode.toDataURL(url,{errorCorrectionLevel:'H',margin:2,scale:8,color:{dark:'#000000',light:'#FFFFFF'}});
-    res.json({qr,url});
-  }catch(e){console.error('QR error:',e);res.status(500).json({error:'Failed to generate QR code'});}
+    const code=String(req.params.code||'').trim();
+    const requestedDomain=req.query.domain ? normalizeHost(req.query.domain) : '';
+
+    let q;
+    if(requestedDomain){
+      q=await pool.query(
+        'SELECT * FROM links WHERE LOWER(selected_domain)=LOWER($1) AND short_code=$2 ORDER BY id DESC LIMIT 1',
+        [requestedDomain,code]
+      );
+    }else{
+      // Backward compatibility: only use a code-only result when it resolves to one link.
+      q=await pool.query(
+        'SELECT * FROM links WHERE short_code=$1 ORDER BY id DESC LIMIT 2',
+        [code]
+      );
+      if(q.rowCount>1){
+        return res.status(400).json({error:'Domain is required for this QR code'});
+      }
+    }
+
+    if(!q.rowCount)return res.status(404).json({error:'Short link not found for the selected domain'});
+
+    const link=mapLink(q.rows[0]);
+    const exactDomain=normalizeHost(link.selectedDomain||link.selected_domain||requestedDomain||BASE_HOST);
+    const url=`https://${exactDomain}/${encodeURIComponent(link.shortCode||code)}`;
+
+    const qr=await QRCode.toDataURL(url,{
+      errorCorrectionLevel:'H',
+      margin:3,
+      scale:10,
+      width:420,
+      color:{dark:'#000000',light:'#FFFFFF'}
+    });
+
+    res.set('Cache-Control','no-store');
+    res.json({qr,url,domain:exactDomain,shortCode:link.shortCode||code});
+  }catch(e){
+    console.error('QR error:',e);
+    res.status(500).json({error:'Failed to generate QR code'});
+  }
 });
 
 // ===== LINK MANAGEMENT =====
