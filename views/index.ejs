@@ -2734,7 +2734,7 @@
                                 </div>
                                 <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
                                     <button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= linkUrl %>" style="flex-shrink: 0; cursor: pointer;">📋 Copy</button>
-                                    <button class="btn btn-secondary btn-sm" onclick="generateQR('<%= linkCode %>')" style="flex-shrink: 0; cursor: pointer;">📱 QR</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= linkCode %>','<%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %>')" style="flex-shrink: 0; cursor: pointer;">📱 QR</button>
                                 </div>
                             </div>
                             <div class="link-meta">
@@ -2918,7 +2918,7 @@
                     </form>
                     <% if (typeof customDomains === 'undefined' || !customDomains || customDomains.length === 0) { %><div class="alert alert-info" style="margin-top:1rem;margin-bottom:0;">ℹ️ Only the base domain is active. Connected custom domains will appear here after you set DOMAIN_1, DOMAIN_2, etc. in Railway.</div><% } %>
                 </div>
-                <% if (typeof shortUrl !== 'undefined' && shortUrl) { %><div class="short-link-display" style="margin-bottom:2rem;"><div><div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem;">YOUR NEW SHORT LINK</div><span class="link"><%= shortUrl %></span></div><div style="display:flex;gap:.5rem;flex-wrap:wrap;"><button class="copy-btn" onclick="copyToClipboard('<%= shortUrl %>')">📋 Copy</button><a class="btn btn-secondary btn-sm" href="<%= shortUrl %>" target="_blank">↗ Test</a></div></div><% } %>
+                <% if (typeof shortUrl !== 'undefined' && shortUrl) { var createdUrlParts = String(shortUrl).replace(/^https?:\/\//,'').split('/'); var createdDomain = createdUrlParts[0] || ''; var createdCode = createdUrlParts[1] || ''; %><div class="short-link-display" style="margin-bottom:2rem;"><div><div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem;">YOUR NEW SHORT LINK</div><span class="link"><%= shortUrl %></span></div><div style="display:flex;gap:.5rem;flex-wrap:wrap;"><button class="copy-btn" onclick="copyToClipboard('<%= shortUrl %>')">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= createdCode %>','<%= createdDomain %>')">📱 QR</button><a class="btn btn-secondary btn-sm" href="<%= shortUrl %>" target="_blank">↗ Test</a></div></div><% } %>
                 <div class="glass-card" style="margin-bottom:2rem;"><h3 style="margin-bottom:.5rem;">👁️ Social Preview</h3><p style="color:var(--text-muted);font-size:.9rem;">Supported social crawlers see your short-domain title and a light description; normal visitors still redirect immediately.</p><div style="margin-top:1rem;background:#fff;color:#222;border-radius:14px;overflow:hidden;max-width:560px;box-shadow:var(--shadow);"><div style="height:130px;background:linear-gradient(135deg,#111827,#312e81);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2.3rem;">🔗</div><div style="padding:1rem;"><div style="font-size:.75rem;text-transform:uppercase;color:#777;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></div><strong style="display:block;margin:.25rem 0;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></strong><span style="font-size:.85rem;color:#666;">Fast, clean and secure short links powered by THIS PERSON IS BRAND.</span></div></div></div>
                 <h2 style="margin-bottom:1rem;">Recent Short Links</h2>
                 <% if (typeof links !== 'undefined' && links && links.length) { %><% links.forEach(function(link) { %><div class="link-card"><div class="link-top"><div><a class="link-url" href="<%= link.shortUrl %>" target="_blank">🔗 <%= link.shortUrl %></a><div class="link-original">→ <%= link.originalUrl %></div></div><div style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')">📱 QR</button></div></div><div class="link-meta"><span>👁️ <%= link.clicks || 0 %> clicks</span><span>🌐 <%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %></span><% if(link.passwordEnabled){ %><span>🔒 Password</span><% } %></div></div><% }); %><% } else { %><div class="glass-card" style="text-align:center;color:var(--text-muted);">No links yet. Create your first one above.</div><% } %>
@@ -3793,14 +3793,40 @@
 
         async function generateQRForDomain(shortCode, domain) {
             try {
-                var response = await fetch('/qr/' + encodeURIComponent(shortCode) + '?domain=' + encodeURIComponent(domain));
+                var cleanDomain = String(domain || '').trim()
+                    .replace(/^https?:\/\//i, '')
+                    .replace(/\/$/, '');
+                var qrPath = '/qr/' + encodeURIComponent(shortCode);
+                if (cleanDomain) qrPath += '?domain=' + encodeURIComponent(cleanDomain);
+
+                var response = await fetch(qrPath, { cache: 'no-store' });
                 var data = await response.json();
-                if (!data.qr) return showToast(data.error || 'QR generation failed', 'error');
+
+                if (!response.ok || !data.qr) {
+                    return showToast(data.error || 'QR generation failed', 'error');
+                }
+
                 var win = window.open('', '_blank');
                 if (!win) return showToast('Popup blocked. Allow popups to view QR.', 'error');
-                win.document.write('<!doctype html><title>QR Code</title><body style="font-family:Arial;text-align:center;padding:30px;background:#111;color:white"><h2>QR Code</h2><img style="max-width:90vw;border-radius:16px" src="' + data.qr + '"><p style="word-break:break-all">' + data.url + '</p></body>');
+
+                var safeUrl = String(data.url || '');
+                win.document.write(
+                    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                    '<title>QR Code</title></head>' +
+                    '<body style="font-family:Inter,Arial,sans-serif;text-align:center;padding:30px;background:#0b1020;color:white;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;">' +
+                    '<div style="max-width:420px;width:100%;background:#151d38;border:1px solid #2b3c68;padding:24px;border-radius:22px;">' +
+                    '<h2 style="margin-top:0">QR Code</h2>' +
+                    '<div style="background:white;padding:16px;border-radius:16px;display:inline-block"><img alt="QR Code" style="display:block;max-width:280px;width:75vw;height:auto" src="' + data.qr + '"></div>' +
+                    '<p style="word-break:break-all;color:#9eeaff;font-size:14px;line-height:1.5">' + safeUrl + '</p>' +
+                    '<p style="color:#9eacc8;font-size:12px">This QR opens the exact selected short-link domain.</p>' +
+                    '<button onclick="window.close()" style="margin-top:8px;padding:10px 18px;background:#6c63ff;border:0;border-radius:10px;color:white;cursor:pointer">Close</button>' +
+                    '</div></body></html>'
+                );
                 win.document.close();
-            } catch (e) { showToast('QR generation failed', 'error'); }
+            } catch (e) {
+                console.error('QR generation failed:', e);
+                showToast('QR generation failed', 'error');
+            }
         }
 
 
@@ -3932,9 +3958,11 @@
         }
 
         // ===== QR CODE =====
-        async function generateQR(shortCode) {
+        async function generateQR(shortCode, domain) {
             try {
-                var response = await fetch('/qr/' + shortCode);
+                var qrPath = '/qr/' + encodeURIComponent(shortCode);
+                if (domain) qrPath += '?domain=' + encodeURIComponent(domain);
+                var response = await fetch(qrPath);
                 var data = await response.json();
                 if (data.qr) {
                     var win = window.open('', '_blank');
