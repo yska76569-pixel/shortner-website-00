@@ -2192,6 +2192,32 @@
             }
         }
 
+
+        /* ===== V7.16 DOMAIN DROPDOWN BODY PORTAL ===== */
+        .premium-domain-menu.portal-mode{
+            position:fixed!important;
+            z-index:2147483000!important;
+            margin:0!important;
+            transform:none!important;
+            opacity:1!important;
+            visibility:visible!important;
+            pointer-events:auto!important;
+            max-height:440px!important;
+        }
+
+        .premium-domain-menu.portal-hidden{
+            display:none!important;
+        }
+
+        .premium-domain-menu.portal-mode .premium-domain-options{
+            max-height:300px!important;
+            overflow-y:auto!important;
+        }
+
+        body.domain-dropdown-open{
+            overflow-x:hidden!important;
+        }
+
 </style>
 </head>
 <body>
@@ -4099,31 +4125,48 @@
         function fallbackCopy(value,done){var ta=document.createElement('textarea');ta.value=value;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
 
 
-        // ===== V7.14 PREMIUM DOMAIN DROPDOWN =====
+        // ===== V7.16 PREMIUM DOMAIN DROPDOWN BODY PORTAL =====
         (function(){
             var nativeSelect=document.getElementById('shortDomainSelect');
             var wrapper=document.getElementById('premiumDomainSelect');
             var trigger=document.getElementById('premiumDomainTrigger');
             var current=document.getElementById('premiumDomainCurrent');
+            var menu=document.getElementById('premiumDomainMenu');
             var optionsHolder=document.getElementById('premiumDomainOptions');
             var count=document.getElementById('premiumDomainCount');
-            if(!nativeSelect||!wrapper||!trigger||!optionsHolder)return;
 
-            function cleanLabel(text){return String(text||'').replace(/\s+/g,' ').trim();}
-            function domainFromOption(option){return cleanLabel(option.value||option.textContent);}
+            if(!nativeSelect||!wrapper||!trigger||!menu||!optionsHolder)return;
+
+            var originalParent = menu.parentNode;
+            var originalNextSibling = menu.nextSibling;
+
+            function cleanLabel(text){
+                return String(text||'').replace(/\s+/g,' ').trim();
+            }
+
+            function domainFromOption(option){
+                return cleanLabel(option.value||option.textContent);
+            }
+
             function stateFromOption(option){
                 var text=cleanLabel(option.textContent).toLowerCase();
                 var disabled=!!option.disabled;
                 var waiting=disabled||text.indexOf('maintenance')!==-1||text.indexOf('coming soon')!==-1;
-                return {disabled:disabled,waiting:waiting,statusText:waiting?(text.indexOf('maintenance')!==-1?'Maintenance':'Coming Soon'):'Ready'};
+                return {
+                    disabled:disabled,
+                    waiting:waiting,
+                    statusText:waiting?(text.indexOf('maintenance')!==-1?'Maintenance':'Coming Soon'):'Ready'
+                };
             }
-            function closeMenu(){wrapper.classList.remove('open');trigger.setAttribute('aria-expanded','false');}
+
             function renderOptions(){
                 optionsHolder.innerHTML='';
                 var selectableCount=0;
+
                 Array.from(nativeSelect.options).forEach(function(option){
                     var domain=domainFromOption(option);
                     if(!domain)return;
+
                     var state=stateFromOption(option);
                     if(!state.disabled)selectableCount++;
 
@@ -4133,21 +4176,39 @@
                     btn.setAttribute('role','option');
                     btn.setAttribute('aria-selected',option.selected?'true':'false');
 
-                    var left=document.createElement('div'); left.className='premium-domain-option-left';
-                    var icon=document.createElement('div'); icon.className='premium-domain-option-icon';
-                    icon.innerHTML=state.waiting?'<i class="fas fa-hourglass-half"></i>':'<i class="fas fa-globe"></i>';
+                    var left=document.createElement('div');
+                    left.className='premium-domain-option-left';
 
-                    var copy=document.createElement('div'); copy.className='premium-domain-option-copy';
-                    var strong=document.createElement('strong'); strong.textContent=domain;
-                    var sub=document.createElement('span'); sub.textContent=state.waiting?'Temporarily unavailable':'Active branded short domain';
+                    var icon=document.createElement('div');
+                    icon.className='premium-domain-option-icon';
+                    icon.innerHTML=state.waiting
+                        ? '<i class="fas fa-hourglass-half"></i>'
+                        : '<i class="fas fa-globe"></i>';
 
-                    copy.appendChild(strong); copy.appendChild(sub); left.appendChild(icon); left.appendChild(copy);
+                    var copy=document.createElement('div');
+                    copy.className='premium-domain-option-copy';
+
+                    var strong=document.createElement('strong');
+                    strong.textContent=domain;
+
+                    var sub=document.createElement('span');
+                    sub.textContent=state.waiting
+                        ? 'Temporarily unavailable'
+                        : 'Active branded short domain';
+
+                    copy.appendChild(strong);
+                    copy.appendChild(sub);
+                    left.appendChild(icon);
+                    left.appendChild(copy);
 
                     var status=document.createElement('span');
                     status.className='premium-domain-status '+(state.waiting?'waiting':'ready');
-                    status.innerHTML=state.waiting?'<i class="fas fa-clock"></i> '+state.statusText:'<i class="fas fa-circle-check"></i> Ready';
+                    status.innerHTML=state.waiting
+                        ? '<i class="fas fa-clock"></i> '+state.statusText
+                        : '<i class="fas fa-circle-check"></i> Ready';
 
-                    btn.appendChild(left); btn.appendChild(status);
+                    btn.appendChild(left);
+                    btn.appendChild(status);
 
                     if(!state.disabled){
                         btn.addEventListener('click',function(){
@@ -4158,21 +4219,99 @@
                             renderOptions();
                         });
                     }
+
                     optionsHolder.appendChild(btn);
                 });
+
                 if(count)count.textContent=selectableCount;
                 var selected=nativeSelect.options[nativeSelect.selectedIndex];
                 if(selected&&current)current.textContent=domainFromOption(selected);
             }
 
+            function positionMenu(){
+                var r=trigger.getBoundingClientRect();
+                var vw=Math.max(document.documentElement.clientWidth||0,window.innerWidth||0);
+                var vh=Math.max(document.documentElement.clientHeight||0,window.innerHeight||0);
+
+                var menuWidth=Math.min(560, vw-24);
+                var left=Math.max(12, Math.min(r.left, vw-menuWidth-12));
+
+                menu.style.width=menuWidth+'px';
+                menu.style.left=left+'px';
+
+                // Default below trigger. If too little room, open upward.
+                var desiredHeight=Math.min(440, menu.scrollHeight||440);
+                var roomBelow=vh-r.bottom-12;
+                var roomAbove=r.top-12;
+
+                if(roomBelow>=Math.min(desiredHeight,260) || roomBelow>=roomAbove){
+                    menu.style.top=(r.bottom+10)+'px';
+                    menu.style.bottom='auto';
+                    menu.style.maxHeight=Math.max(220,Math.min(440,roomBelow))+'px';
+                    menu.style.transformOrigin='top left';
+                }else{
+                    menu.style.top='auto';
+                    menu.style.bottom=(vh-r.top+10)+'px';
+                    menu.style.maxHeight=Math.max(220,Math.min(440,roomAbove))+'px';
+                    menu.style.transformOrigin='bottom left';
+                }
+            }
+
+            function openMenu(){
+                if(!document.body.contains(menu) || menu.parentNode!==document.body){
+                    document.body.appendChild(menu);
+                }
+                menu.classList.add('portal-mode');
+                menu.classList.remove('portal-hidden');
+                wrapper.classList.add('open');
+                trigger.setAttribute('aria-expanded','true');
+                document.body.classList.add('domain-dropdown-open');
+                positionMenu();
+            }
+
+            function closeMenu(){
+                wrapper.classList.remove('open');
+                trigger.setAttribute('aria-expanded','false');
+                document.body.classList.remove('domain-dropdown-open');
+                menu.classList.remove('portal-mode');
+                menu.classList.add('portal-hidden');
+
+                // Restore menu into original DOM location to keep markup stable.
+                if(originalParent){
+                    if(originalNextSibling && originalNextSibling.parentNode===originalParent){
+                        originalParent.insertBefore(menu,originalNextSibling);
+                    }else{
+                        originalParent.appendChild(menu);
+                    }
+                }
+                menu.classList.remove('portal-hidden');
+                menu.removeAttribute('style');
+            }
+
             trigger.addEventListener('click',function(e){
+                e.preventDefault();
                 e.stopPropagation();
-                var opening=!wrapper.classList.contains('open');
-                wrapper.classList.toggle('open',opening);
-                trigger.setAttribute('aria-expanded',opening?'true':'false');
+                wrapper.classList.contains('open') ? closeMenu() : openMenu();
             });
-            document.addEventListener('click',function(e){if(!wrapper.contains(e.target))closeMenu();});
-            document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu();});
+
+            document.addEventListener('click',function(e){
+                if(wrapper.classList.contains('open') && !menu.contains(e.target) && !trigger.contains(e.target)){
+                    closeMenu();
+                }
+            });
+
+            document.addEventListener('keydown',function(e){
+                if(e.key==='Escape')closeMenu();
+            });
+
+            window.addEventListener('resize',function(){
+                if(wrapper.classList.contains('open'))positionMenu();
+            });
+
+            window.addEventListener('scroll',function(){
+                if(wrapper.classList.contains('open'))positionMenu();
+            },true);
+
             nativeSelect.addEventListener('change',renderOptions);
             renderOptions();
         })();
