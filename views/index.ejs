@@ -2018,6 +2018,115 @@
 
         .payment-config-status{display:flex;gap:.45rem;flex-wrap:wrap;margin:.2rem 0 .9rem}.payment-config-status span{padding:.3rem .52rem;border-radius:999px;font-size:.61rem;font-weight:800;border:1px solid rgba(255,255,255,.1)}.payment-config-status .ok{color:#8CFFD1;background:rgba(51,230,161,.07);border-color:rgba(51,230,161,.18)}.payment-config-status .missing{color:#FFD0D8;background:rgba(255,94,122,.07);border-color:rgba(255,94,122,.18)}
 
+
+        /* ===== V7.14 PREMIUM DOMAIN DROPDOWN ===== */
+        .premium-domain-field{position:relative;overflow:visible!important}
+        .premium-domain-native-select{
+            position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;
+            pointer-events:none!important;clip:rect(0 0 0 0)!important;overflow:hidden!important
+        }
+        .premium-domain-select{position:relative;width:100%;z-index:120}
+        .premium-domain-trigger{
+            width:100%;min-height:68px;padding:.78rem .95rem;border-radius:17px;
+            border:1px solid rgba(124,92,255,.30);
+            background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(39,215,255,.045)),rgba(15,24,50,.88);
+            display:flex;align-items:center;justify-content:space-between;gap:.9rem;color:#fff;cursor:pointer;
+            font-family:inherit;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+            transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .22s ease,box-shadow .22s ease,background .22s ease
+        }
+        .premium-domain-trigger:hover{
+            transform:translateY(-2px);border-color:rgba(39,215,255,.45);
+            background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(39,215,255,.075)),rgba(17,27,56,.95);
+            box-shadow:0 12px 30px rgba(0,0,0,.22),0 0 26px rgba(39,215,255,.06)
+        }
+        .premium-domain-select.open .premium-domain-trigger{
+            border-color:rgba(124,92,255,.68);box-shadow:0 0 0 4px rgba(124,92,255,.10),0 14px 36px rgba(0,0,0,.26)
+        }
+        .premium-domain-trigger-left{display:flex;align-items:center;gap:.75rem;min-width:0}
+        .premium-domain-icon{
+            width:42px;height:42px;flex:0 0 auto;border-radius:13px;display:flex;align-items:center;justify-content:center;
+            color:#A8EDFF;background:linear-gradient(135deg,rgba(124,92,255,.20),rgba(39,215,255,.13));
+            border:1px solid rgba(124,92,255,.22)
+        }
+        .premium-domain-trigger-text{display:flex;flex-direction:column;gap:.12rem;min-width:0}
+        .premium-domain-overline{font-size:.56rem;letter-spacing:.14em;font-weight:900;color:#7EDFFF}
+        .premium-domain-trigger-text strong{font-size:.86rem;color:#F7FAFF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .premium-domain-chevron{
+            width:36px;height:36px;flex:0 0 auto;border-radius:11px;display:flex;align-items:center;justify-content:center;
+            color:#AFC3E8;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);
+            transition:transform .25s ease,background .2s ease,color .2s ease
+        }
+        .premium-domain-select.open .premium-domain-chevron{transform:rotate(180deg);color:#fff;background:rgba(124,92,255,.14)}
+        .premium-domain-menu{
+            position:absolute;left:0;top:calc(100% + 10px);width:min(560px,calc(100vw - 32px));max-height:440px;padding:.8rem;
+            border-radius:21px;background:linear-gradient(180deg,rgba(23,34,69,.985),rgba(13,21,45,.99));
+            border:1px solid rgba(124,92,255,.30);box-shadow:0 32px 84px rgba(0,0,0,.50),0 0 48px rgba(124,92,255,.085);
+            backdrop-filter:blur(24px);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-10px) scale(.985);
+            transform-origin:top left;transition:opacity .20s ease,transform .22s cubic-bezier(.2,.8,.2,1),visibility .20s ease;
+            overflow:hidden
+        }
+        .premium-domain-select.open .premium-domain-menu{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1)}
+        .premium-domain-menu-head{
+            display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.55rem .55rem .8rem;
+            border-bottom:1px solid rgba(255,255,255,.07)
+        }
+        .premium-domain-menu-head>div{display:flex;flex-direction:column;gap:.1rem}
+        .premium-domain-menu-head strong{color:#fff;font-size:.84rem}
+        .premium-domain-menu-head span{color:#8FA2C5;font-size:.63rem}
+        .premium-domain-count{
+            width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:999px;
+            background:rgba(39,215,255,.08);border:1px solid rgba(39,215,255,.16);color:#8EEBFF!important;
+            font-size:.72rem!important;font-weight:900
+        }
+        .premium-domain-options{
+            display:flex;flex-direction:column;gap:.48rem;padding:.68rem .15rem;max-height:305px;overflow-y:auto;overscroll-behavior:contain
+        }
+        .premium-domain-options::-webkit-scrollbar{width:6px}
+        .premium-domain-options::-webkit-scrollbar-thumb{background:linear-gradient(#7C5CFF,#27D7FF);border-radius:999px}
+        .premium-domain-option{
+            width:100%;min-height:62px;padding:.7rem .8rem;border-radius:15px;display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+            background:rgba(255,255,255,.038);border:1px solid rgba(255,255,255,.075);cursor:pointer;color:#EAF2FF;font-family:inherit;
+            text-align:left;transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease
+        }
+        .premium-domain-option:hover:not(.disabled){
+            transform:translateX(6px);background:linear-gradient(90deg,rgba(124,92,255,.13),rgba(39,215,255,.06));
+            border-color:rgba(39,215,255,.28);box-shadow:0 10px 24px rgba(0,0,0,.17)
+        }
+        .premium-domain-option.selected{
+            background:linear-gradient(90deg,rgba(124,92,255,.19),rgba(39,215,255,.075));
+            border-color:rgba(124,92,255,.45);box-shadow:inset 3px 0 0 #7C5CFF
+        }
+        .premium-domain-option.disabled{
+            opacity:.58;cursor:not-allowed;background:rgba(255,203,92,.035);border-color:rgba(255,203,92,.11)
+        }
+        .premium-domain-option-left{display:flex;align-items:center;gap:.68rem;min-width:0}
+        .premium-domain-option-icon{
+            width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;
+            background:rgba(39,215,255,.065);border:1px solid rgba(39,215,255,.12);color:#83E7FF
+        }
+        .premium-domain-option.disabled .premium-domain-option-icon{
+            color:#FFD676;background:rgba(255,203,92,.055);border-color:rgba(255,203,92,.12)
+        }
+        .premium-domain-option-copy{min-width:0;display:flex;flex-direction:column;gap:.14rem}
+        .premium-domain-option-copy strong{font-size:.80rem;color:#F7FAFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .premium-domain-option-copy span{font-size:.59rem;color:#89A0C3}
+        .premium-domain-status{
+            flex:0 0 auto;display:inline-flex;align-items:center;gap:.3rem;padding:.30rem .50rem;border-radius:999px;
+            font-size:.57rem;font-weight:900;white-space:nowrap
+        }
+        .premium-domain-status.ready{color:#8CFFD1;background:rgba(51,230,161,.07);border:1px solid rgba(51,230,161,.16)}
+        .premium-domain-status.waiting{color:#FFE08A;background:rgba(255,203,92,.07);border:1px solid rgba(255,203,92,.16)}
+        .premium-domain-menu-foot{
+            display:flex;align-items:center;gap:.45rem;padding:.68rem .55rem .15rem;border-top:1px solid rgba(255,255,255,.07);
+            color:#8294B5;font-size:.59rem
+        }
+        .premium-domain-menu-foot i{color:#FFE08A!important}
+        @media(max-width:700px){
+            .premium-domain-menu{width:100%;max-height:400px}
+            .premium-domain-option{min-height:56px}
+            .premium-domain-status{font-size:.52rem}
+        }
+
 </style>
 </head>
 <body>
@@ -2888,7 +2997,11 @@
                     <form action="/shorten" method="POST" id="shortenForm">
                         <div class="form-group"><label>Destination URL</label><input type="url" class="form-control" name="originalUrl" placeholder="https://example.com/your-long-link" required></div>
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
-                            <div class="form-group"><label>Short Domain</label><select class="form-control" name="domain" required>
+                            
+<div class="form-group premium-domain-field">
+    <label>Short Domain</label>
+    <select class="form-control premium-domain-native-select" name="domain" id="shortDomainSelect" required>
+
                                 <% if (typeof domainChoices !== 'undefined' && domainChoices && domainChoices.length) { %>
                                   <% domainChoices.forEach(function(d){ %>
                                     <option value="<%= d.domain %>" <%= d.selectable ? '' : 'disabled' %>><%= d.domain %><%= d.selectable ? '' : (d.maintenance ? ' — Maintenance • Coming Soon' : ' — Coming Soon') %></option>
@@ -2896,7 +3009,37 @@
                                 <% } else { %>
                                   <% (availableDomains || []).forEach(function(domain){ %><option value="<%= domain %>"><%= domain %></option><% }); %>
                                 <% } %>
-                              </select></div>
+                              
+    </select>
+
+    <div class="premium-domain-select" id="premiumDomainSelect">
+        <button type="button" class="premium-domain-trigger" id="premiumDomainTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <div class="premium-domain-trigger-left">
+                <div class="premium-domain-icon"><i class="fas fa-globe"></i></div>
+                <div class="premium-domain-trigger-text">
+                    <span class="premium-domain-overline">SELECT DOMAIN</span>
+                    <strong id="premiumDomainCurrent">Choose a short domain</strong>
+                </div>
+            </div>
+            <div class="premium-domain-chevron"><i class="fas fa-chevron-down"></i></div>
+        </button>
+
+        <div class="premium-domain-menu" id="premiumDomainMenu" role="listbox">
+            <div class="premium-domain-menu-head">
+                <div>
+                    <strong>Available Short Domains</strong>
+                    <span>Choose the domain you want to use</span>
+                </div>
+                <span class="premium-domain-count" id="premiumDomainCount">0</span>
+            </div>
+            <div class="premium-domain-options" id="premiumDomainOptions"></div>
+            <div class="premium-domain-menu-foot">
+                <i class="fas fa-bolt"></i>
+                <span>Active domains are ready for fast branded redirects.</span>
+            </div>
+        </div>
+    </div>
+</div>
                             <% if (typeof domainChoices !== 'undefined' && domainChoices && domainChoices.some(function(d){ return !d.selectable; })) { %>
                                 <div class="domain-notice-panel">
                                     <div class="domain-notice-title"><i class="fas fa-circle-info"></i> Domain Status</div>
@@ -3889,6 +4032,85 @@
             else fallbackCopy(value,done);
         }
         function fallbackCopy(value,done){var ta=document.createElement('textarea');ta.value=value;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
+
+
+        // ===== V7.14 PREMIUM DOMAIN DROPDOWN =====
+        (function(){
+            var nativeSelect=document.getElementById('shortDomainSelect');
+            var wrapper=document.getElementById('premiumDomainSelect');
+            var trigger=document.getElementById('premiumDomainTrigger');
+            var current=document.getElementById('premiumDomainCurrent');
+            var optionsHolder=document.getElementById('premiumDomainOptions');
+            var count=document.getElementById('premiumDomainCount');
+            if(!nativeSelect||!wrapper||!trigger||!optionsHolder)return;
+
+            function cleanLabel(text){return String(text||'').replace(/\s+/g,' ').trim();}
+            function domainFromOption(option){return cleanLabel(option.value||option.textContent);}
+            function stateFromOption(option){
+                var text=cleanLabel(option.textContent).toLowerCase();
+                var disabled=!!option.disabled;
+                var waiting=disabled||text.indexOf('maintenance')!==-1||text.indexOf('coming soon')!==-1;
+                return {disabled:disabled,waiting:waiting,statusText:waiting?(text.indexOf('maintenance')!==-1?'Maintenance':'Coming Soon'):'Ready'};
+            }
+            function closeMenu(){wrapper.classList.remove('open');trigger.setAttribute('aria-expanded','false');}
+            function renderOptions(){
+                optionsHolder.innerHTML='';
+                var selectableCount=0;
+                Array.from(nativeSelect.options).forEach(function(option){
+                    var domain=domainFromOption(option);
+                    if(!domain)return;
+                    var state=stateFromOption(option);
+                    if(!state.disabled)selectableCount++;
+
+                    var btn=document.createElement('button');
+                    btn.type='button';
+                    btn.className='premium-domain-option'+(option.selected?' selected':'')+(state.disabled?' disabled':'');
+                    btn.setAttribute('role','option');
+                    btn.setAttribute('aria-selected',option.selected?'true':'false');
+
+                    var left=document.createElement('div'); left.className='premium-domain-option-left';
+                    var icon=document.createElement('div'); icon.className='premium-domain-option-icon';
+                    icon.innerHTML=state.waiting?'<i class="fas fa-hourglass-half"></i>':'<i class="fas fa-globe"></i>';
+
+                    var copy=document.createElement('div'); copy.className='premium-domain-option-copy';
+                    var strong=document.createElement('strong'); strong.textContent=domain;
+                    var sub=document.createElement('span'); sub.textContent=state.waiting?'Temporarily unavailable':'Active branded short domain';
+
+                    copy.appendChild(strong); copy.appendChild(sub); left.appendChild(icon); left.appendChild(copy);
+
+                    var status=document.createElement('span');
+                    status.className='premium-domain-status '+(state.waiting?'waiting':'ready');
+                    status.innerHTML=state.waiting?'<i class="fas fa-clock"></i> '+state.statusText:'<i class="fas fa-circle-check"></i> Ready';
+
+                    btn.appendChild(left); btn.appendChild(status);
+
+                    if(!state.disabled){
+                        btn.addEventListener('click',function(){
+                            nativeSelect.value=option.value;
+                            nativeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+                            current.textContent=domain;
+                            closeMenu();
+                            renderOptions();
+                        });
+                    }
+                    optionsHolder.appendChild(btn);
+                });
+                if(count)count.textContent=selectableCount;
+                var selected=nativeSelect.options[nativeSelect.selectedIndex];
+                if(selected&&current)current.textContent=domainFromOption(selected);
+            }
+
+            trigger.addEventListener('click',function(e){
+                e.stopPropagation();
+                var opening=!wrapper.classList.contains('open');
+                wrapper.classList.toggle('open',opening);
+                trigger.setAttribute('aria-expanded',opening?'true':'false');
+            });
+            document.addEventListener('click',function(e){if(!wrapper.contains(e.target))closeMenu();});
+            document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu();});
+            nativeSelect.addEventListener('change',renderOptions);
+            renderOptions();
+        })();
 
         // ===== TOAST =====
         function showToast(message, type, duration) {
