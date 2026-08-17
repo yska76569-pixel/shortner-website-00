@@ -2127,6 +2127,71 @@
             .premium-domain-status{font-size:.52rem}
         }
 
+
+        /* ===== V7.15 DOMAIN DROPDOWN OVERLAY / CLIPPING FIX ===== */
+        .premium-domain-field,
+        .premium-domain-select{
+            position:relative!important;
+            overflow:visible!important;
+        }
+
+        .premium-domain-select.open{
+            z-index:99999!important;
+        }
+
+        .premium-domain-menu{
+            z-index:999999!important;
+            overflow:hidden!important;
+        }
+
+        .premium-domain-select.open .premium-domain-menu{
+            opacity:1!important;
+            visibility:visible!important;
+            pointer-events:auto!important;
+            z-index:999999!important;
+        }
+
+        /* Allow the Short Link form/card to let the dropdown escape vertically */
+        .shortener-card,
+        .glass-card:has(.premium-domain-select),
+        .form-grid:has(.premium-domain-select),
+        .form-group:has(.premium-domain-select){
+            overflow:visible!important;
+        }
+
+        /* Keep following sections behind the opened domain menu */
+        .social-preview,
+        .social-preview-card,
+        .glass-card:has(.social-preview),
+        .glass-card:has(.social-preview-card){
+            position:relative!important;
+            z-index:1!important;
+        }
+
+        .premium-domain-options{
+            max-height:320px!important;
+            overflow-y:auto!important;
+            overflow-x:hidden!important;
+        }
+
+        /* Extra protection for the create-link section stacking context */
+        .create-link-section,
+        .short-link-form,
+        .shorten-form,
+        .premium-dashboard-main{
+            overflow:visible!important;
+        }
+
+        @media(max-width:700px){
+            .premium-domain-menu{
+                width:min(560px, calc(100vw - 24px))!important;
+                max-height:390px!important;
+            }
+            .premium-domain-options{
+                max-height:270px!important;
+            }
+        }
+
 </style>
 </head>
 <body>
