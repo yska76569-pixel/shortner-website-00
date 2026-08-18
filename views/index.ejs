@@ -2218,6 +2218,37 @@
             overflow-x:hidden!important;
         }
 
+
+        /* ===== V7.18 FREE PLAN POLICY ===== */
+        .free-policy-note{
+            margin:.8rem auto 0;max-width:760px;padding:.65rem .8rem;border-radius:13px;
+            display:flex;align-items:flex-start;justify-content:center;gap:.5rem;
+            color:#D8E8FF;background:rgba(39,215,255,.055);border:1px solid rgba(39,215,255,.13);
+            font-size:.7rem;line-height:1.5
+        }
+        .free-policy-note i{color:#7FE7FF!important;margin-top:.12rem}
+        .free-policy-note strong{color:#FFFFFF}
+
+
+        /* ===== V7.19 API ON/OFF CONTROL ===== */
+        .api-control-head{
+            display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem
+        }
+        .api-master-state{
+            display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .7rem;border-radius:999px;
+            font-size:.7rem;font-weight:900;border:1px solid rgba(255,255,255,.1)
+        }
+        .api-master-state.on{color:#8CFFD1;background:rgba(51,230,161,.07);border-color:rgba(51,230,161,.18)}
+        .api-master-state.off{color:#FFD0D8;background:rgba(255,94,122,.07);border-color:rgba(255,94,122,.18)}
+        .api-state-dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 12px currentColor}
+        .api-control-actions{display:flex;gap:.55rem;flex-wrap:wrap;align-items:center;margin-top:.8rem}
+        .api-control-note{
+            margin-top:1rem;padding:.7rem .8rem;border-radius:13px;display:flex;align-items:flex-start;gap:.55rem;
+            background:rgba(39,215,255,.045);border:1px solid rgba(39,215,255,.11);color:#AFC2E3;font-size:.68rem;line-height:1.55
+        }
+        .api-control-note i{color:#83E7FF!important;margin-top:.1rem}
+        .btn[disabled]{opacity:.48!important;cursor:not-allowed!important;filter:grayscale(.25)}
+
 </style>
 </head>
 <body>
@@ -3002,7 +3033,7 @@
                                     <select class="form-control" name="domain" required>
                                         <% if(typeof domainChoices!=='undefined' && domainChoices && domainChoices.length){ %>
                                             <% domainChoices.forEach(function(d){ %>
-                                                <option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.maintenance?' — Maintenance • Coming Soon':' — Coming Soon') %></option>
+                                                <option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance • Coming Soon':' — Coming Soon')) %></option>
                                             <% }); %>
                                         <% } else { %>
                                             <% (availableDomains||[]).forEach(function(domain){ %><option value="<%= domain %>"><%= domain %></option><% }); %>
@@ -3083,6 +3114,9 @@
                     <div style="font-size:3rem;">⚡</div>
                     <h2 style="font-size:2rem;font-weight:800;">Create a Short Link</h2>
                     <p style="color:var(--text-muted);">Paste a URL, choose a domain, and get a fast branded short link.</p>
+                    <% if (user && !user.isPremium) { %>
+                        <div class="free-policy-note"><i class="fas fa-circle-info"></i><span>Free Plan: lifetime <strong><%= typeof freeLinkLimit !== 'undefined' ? freeLinkLimit : 10 %></strong> links. Delete করলে quota ফেরত আসবে না. Free domains: <strong>.world</strong> + <strong>.shop</strong>.</span></div>
+                    <% } %>
                 </div>
                 <div class="glass-card" style="margin-bottom:2rem;">
                     <form action="/shorten" method="POST" id="shortenForm">
@@ -3095,7 +3129,7 @@
 
                                 <% if (typeof domainChoices !== 'undefined' && domainChoices && domainChoices.length) { %>
                                   <% domainChoices.forEach(function(d){ %>
-                                    <option value="<%= d.domain %>" <%= d.selectable ? '' : 'disabled' %>><%= d.domain %><%= d.selectable ? '' : (d.maintenance ? ' — Maintenance • Coming Soon' : ' — Coming Soon') %></option>
+                                    <option value="<%= d.domain %>" <%= d.selectable ? '' : 'disabled' %>><%= d.domain %><%= d.selectable ? '' : (d.planRestricted ? ' — Premium Only' : (d.maintenance ? ' — Maintenance • Coming Soon' : ' — Coming Soon')) %></option>
                                   <% }); %>
                                 <% } else { %>
                                   <% (availableDomains || []).forEach(function(domain){ %><option value="<%= domain %>"><%= domain %></option><% }); %>
@@ -3172,17 +3206,53 @@
                     <a href="/plans" class="btn btn-primary">Upgrade to Premium</a>
                 </div>
             <% } else { %>
-                <div class="glass-card" style="margin-bottom:1.5rem;">
-                    <h2>API Key</h2>
-                    <p style="color:var(--text-muted);margin:.6rem 0 1rem;">The full key is shown only once. Never put it in public frontend JavaScript.</p>
+                <div class="glass-card api-control-card" style="margin-bottom:1.5rem;">
+                    <div class="api-control-head">
+                        <div>
+                            <div class="dashboard-kicker">API CONTROL</div>
+                            <h2>API Key & Access</h2>
+                            <p style="color:var(--text-muted);margin:.35rem 0 0;">Keep your key saved, and turn API usage ON/OFF whenever you want.</p>
+                        </div>
+                        <div class="api-master-state <%= (user.apiEnabled && user.apiAdminEnabled) ? 'on' : 'off' %>">
+                            <span class="api-state-dot"></span>
+                            <strong><%= (user.apiEnabled && user.apiAdminEnabled) ? 'API ON' : 'API OFF' %></strong>
+                        </div>
+                    </div>
+
+                    <% if (!user.apiAdminEnabled) { %>
+                        <div class="alert alert-danger"><strong>Admin Lock:</strong> API access has been disabled by administrator. Your key cannot be used until admin enables access again.</div>
+                    <% } else if (!user.apiEnabled && user.apiKeyPrefix) { %>
+                        <div class="alert alert-info">Your API key is saved, but API access is currently <strong>OFF</strong>.</div>
+                    <% } %>
+
+                    <p style="color:var(--text-muted);margin:.8rem 0 1rem;">The full key is shown only once. Never put it in public frontend JavaScript.</p>
+
                     <% if (typeof generatedApiKey !== 'undefined' && generatedApiKey) { %>
                         <div class="short-link-display"><code style="word-break:break-all;"><%= generatedApiKey %></code><button class="copy-btn" onclick="copyToClipboard('<%= generatedApiKey %>')">Copy Key</button></div>
-                    <% } else if (user.apiEnabled) { %>
-                        <div class="alert alert-info">Active key: <strong><%= user.apiKeyPrefix %>••••••••</strong></div>
-                    <% } else { %><div class="alert alert-info">No active API key.</div><% } %>
-                    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-                        <form method="POST" action="/api-access/generate"><button class="btn btn-primary">Generate / Rotate Key</button></form>
-                        <% if(user.apiEnabled){ %><form method="POST" action="/api-access/revoke"><button class="btn btn-danger">Revoke Key</button></form><% } %>
+                    <% } else if (user.apiKeyPrefix) { %>
+                        <div class="alert alert-info">Saved key: <strong><%= user.apiKeyPrefix %>••••••••</strong></div>
+                    <% } else { %>
+                        <div class="alert alert-info">No API key generated yet.</div>
+                    <% } %>
+
+                    <div class="api-control-actions">
+                        <form method="POST" action="/api-access/generate"><button class="btn btn-primary" <%= !user.apiAdminEnabled ? 'disabled' : '' %>>Generate / Rotate Key</button></form>
+
+                        <% if (user.apiKeyPrefix) { %>
+                            <form method="POST" action="/api-access/toggle">
+                                <input type="hidden" name="enabled" value="<%= user.apiEnabled ? 'false' : 'true' %>">
+                                <button class="btn <%= user.apiEnabled ? 'btn-warning' : 'btn-primary' %>" <%= (!user.apiAdminEnabled && !user.apiEnabled) ? 'disabled' : '' %>>
+                                    <i class="fas <%= user.apiEnabled ? 'fa-toggle-off' : 'fa-toggle-on' %>"></i>
+                                    <%= user.apiEnabled ? 'Turn API OFF' : 'Turn API ON' %>
+                                </button>
+                            </form>
+                            <form method="POST" action="/api-access/revoke" onsubmit="return confirm('Revoke this API key permanently?')"><button class="btn btn-danger">Revoke Key</button></form>
+                        <% } %>
+                    </div>
+
+                    <div class="api-control-note">
+                        <i class="fas fa-shield-halved"></i>
+                        <span><strong>User switch:</strong> OFF immediately blocks your API key without deleting it. <strong>Admin switch:</strong> overrides user access and can block API usage at account level.</span>
                     </div>
                 </div>
                 <div class="glass-card">
@@ -3378,13 +3448,25 @@
 
             <div class="glass-card" style="margin-bottom:1.5rem;">
                 <h2 style="margin-bottom:1rem;">Users</h2>
-                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Telegram</th><th>Email</th><th>Plan</th><th>Status</th><th>Links</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>
+                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Telegram</th><th>Email</th><th>Plan</th><th>Status</th><th>API</th><th>Links</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>
                 <% adminUsers.forEach(function(u){ %><tr>
                     <td><%= u.id %></td><td><strong><%= u.displayName || u.username %></strong><br>@<%= u.username %></td><td><%= u.telegramId %></td><td><%= u.email || '-' %></td>
                     <td><span class="status-pill <%= u.isPremium?'ok':'warn' %>"><%= u.isPremium?'Premium':'Free' %></span><% if(u.premiumUntil){ %><br><small><%= new Date(u.premiumUntil).toLocaleDateString() %></small><% } %></td>
-                    <td><span class="status-pill <%= u.accountStatus==='blocked'?'bad':'ok' %>"><%= u.accountStatus %></span></td><td><%= u.totalLinks %></td><td><%= u.totalClicks %></td>
+                    <td><span class="status-pill <%= u.accountStatus==='blocked'?'bad':'ok' %>"><%= u.accountStatus %></span></td>
+                    <td>
+                        <% if(!u.apiAdminEnabled){ %>
+                            <span class="status-pill bad">Admin OFF</span>
+                        <% } else if(u.apiEnabled){ %>
+                            <span class="status-pill ok">ON</span>
+                        <% } else { %>
+                            <span class="status-pill warn">OFF</span>
+                        <% } %>
+                        <% if(u.apiKeyPrefix){ %><br><small><%= u.apiKeyPrefix %>•••</small><% } %>
+                    </td>
+                    <td><%= u.totalLinks %></td><td><%= u.totalClicks %></td>
                     <td><div class="admin-actions">
                         <form action="/admin/users/<%= u.id %>/block" method="POST"><button class="btn btn-sm <%= u.accountStatus==='blocked'?'btn-secondary':'btn-danger' %>"><%= u.accountStatus==='blocked'?'Unblock':'Block' %></button></form>
+                        <form action="/admin/users/<%= u.id %>/api-toggle" method="POST"><button class="btn btn-sm <%= u.apiAdminEnabled ? 'btn-warning' : 'btn-primary' %>"><i class="fas <%= u.apiAdminEnabled ? 'fa-toggle-off' : 'fa-toggle-on' %>"></i> <%= u.apiAdminEnabled ? 'API Admin OFF' : 'API Admin ON' %></button></form>
                         <form action="/admin/users/<%= u.id %>/plan" method="POST"><select name="months"><option value="0">Free</option><option value="1">+1 Month</option><option value="3">+3 Months</option><option value="6">+6 Months</option><option value="12">+12 Months</option></select><button class="btn btn-sm btn-primary">Set</button></form>
                         <form action="/admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm('Delete this user and all their links/clicks/payments?')"><button class="btn btn-sm btn-danger">Delete User</button></form>
                     </div></td>
@@ -4151,7 +4233,8 @@
             function stateFromOption(option){
                 var text=cleanLabel(option.textContent).toLowerCase();
                 var disabled=!!option.disabled;
-                var waiting=disabled||text.indexOf('maintenance')!==-1||text.indexOf('coming soon')!==-1;
+                var premiumOnly=text.indexOf('premium only')!==-1;
+                var waiting=disabled||premiumOnly||text.indexOf('maintenance')!==-1||text.indexOf('coming soon')!==-1;
                 return {
                     disabled:disabled,
                     waiting:waiting,
