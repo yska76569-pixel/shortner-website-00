@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-session-secret';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
-const FREE_LINK_LIMIT = Math.max(1, Number(process.env.FREE_LINK_LIMIT || 5));
+const FREE_LINK_LIMIT = Math.max(1, Number(process.env.FREE_LINK_LIMIT || 10));
 const PLAN_1_PRICE = Math.max(1, Number(process.env.PLAN_1_PRICE || 100));
 const PLAN_3_PRICE = Math.max(1, Number(process.env.PLAN_3_PRICE || 250));
 const PLAN_1_USD = Number(process.env.PLAN_1_USD || 0.81);
@@ -31,6 +31,12 @@ const API_RATE_LIMIT = Math.max(10, Number(process.env.API_RATE_LIMIT || 120));
 const AUTO_BACKUP_HOURS = Math.max(1, Number(process.env.AUTO_BACKUP_HOURS || 24));
 const BLOCKED_DOMAINS = String(process.env.BLOCKED_DOMAINS || '')
   .split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+
+const IPINFO_TOKEN = String(process.env.IPINFO_TOKEN || '').trim();
+const GEO_LOOKUP_TIMEOUT_MS = Math.max(300, Number(process.env.GEO_LOOKUP_TIMEOUT_MS || 1200));
+const GEO_CACHE_TTL_MS = Math.max(60000, Number(process.env.GEO_CACHE_TTL_MS || 21600000)); // 6 hours
+const geoCache = new Map();
+
 
 const paymentUpload = multer({
   storage: multer.memoryStorage(),
@@ -56,6 +62,14 @@ const CUSTOM_DOMAINS = [
   .map(d => String(d).trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase())
   .filter((d, i, arr) => d && d !== BASE_HOST && arr.indexOf(d) === i);
 const AVAILABLE_DOMAINS = [BASE_HOST, ...CUSTOM_DOMAINS];
+
+const FREE_PLAN_DOMAINS = new Set(
+  String(process.env.FREE_PLAN_DOMAINS || 'thispersonisbrandshortner.world,thispersonisbrandshortner.shop')
+    .split(',')
+    .map(d => String(d).trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase())
+    .filter(Boolean)
+);
+
 const PREVIEW_DESCRIPTION = process.env.PREVIEW_DESCRIPTION || 'Fast, clean and secure short links powered by THIS PERSON IS BRAND.';
 
 // ===== VIEW ENGINE / STATIC =====
@@ -196,6 +210,11 @@ async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS premium_until TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason TEXT NOT NULL DEFAULT '';
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS lifetime_links_created INTEGER NOT NULL DEFAULT 0;
+    UPDATE users
+    SET lifetime_links_created = GREATEST(lifetime_links_created, total_links);
+
+
     CREATE TABLE IF NOT EXISTS payments (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -218,6 +237,7 @@ async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_prefix TEXT NOT NULL DEFAULT '';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_created_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS api_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS api_admin_enabled BOOLEAN NOT NULL DEFAULT TRUE;
 
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_enabled BOOLEAN NOT NULL DEFAULT FALSE;
@@ -284,6 +304,7 @@ async function initDatabase() {
       VALUES($1,TRUE,FALSE) ON CONFLICT(domain) DO NOTHING`, [normalizeHost(domain)]);
   }
   console.log('✅ Full app database tables ready: users, links, clicks, online_users, payments, api, notifications, audit, domains, backups');
+  console.log(`🌍 Geo detection: Cloudflare headers + real forwarded IP + geoip-lite${IPINFO_TOKEN ? ' + IPinfo' : ''}`);
 }
 
 function toIso(v) { return v ? new Date(v).toISOString() : null; }
@@ -294,10 +315,10 @@ function mapUser(r) {
     firstName: r.first_name, lastName: r.last_name, displayName: r.display_name,
     email: r.email, profilePhoto: r.profile_photo, timezone: r.timezone,
     accountStatus: r.account_status, createdAt: toIso(r.created_at), lastLogin: toIso(r.last_login),
-    totalLinks: Number(r.total_links || 0), totalClicks: Number(r.total_clicks || 0), isAdmin: !!r.is_admin,
+    totalLinks: Number(r.total_links || 0), lifetimeLinksCreated: Number(r.lifetime_links_created || 0), totalClicks: Number(r.total_clicks || 0), isAdmin: !!r.is_admin,
     planType: r.plan_type || 'free', premiumUntil: toIso(r.premium_until), blockedReason: r.blocked_reason || '',
     isPremium: (r.plan_type === 'premium' && r.premium_until && new Date(r.premium_until) > new Date()),
-    apiEnabled: !!r.api_enabled, apiKeyPrefix: r.api_key_prefix || '', apiKeyCreatedAt: toIso(r.api_key_created_at)
+    apiEnabled: !!r.api_enabled, apiAdminEnabled: r.api_admin_enabled !== false, apiKeyPrefix: r.api_key_prefix || '', apiKeyCreatedAt: toIso(r.api_key_created_at)
   };
 }
 function mapLink(r) {
@@ -411,13 +432,155 @@ function getDeviceInfo(ua='') {
 }
 function normalizeClientIp(ip) {
   let value = String(ip || '').trim();
-  // Railway/Express can expose IPv4 as IPv4-mapped IPv6.
+  if (!value) return '';
   if (value.startsWith('::ffff:')) value = value.slice(7);
-  // If a comma-separated forwarded chain ever reaches here, use the first IP.
-  if (value.includes(',')) value = value.split(',')[0].trim();
-  // Remove brackets around IPv6 literals.
-  if (value.startsWith('[') && value.endsWith(']')) value = value.slice(1, -1);
-  return value;
+  if (value.startsWith('[')) {
+    const end = value.indexOf(']');
+    if (end > 0) value = value.slice(1, end);
+  }
+  // Strip :port only for normal IPv4:port values.
+  if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(value)) value = value.replace(/:\d+$/, '');
+  return value.trim();
+}
+
+function isPrivateOrReservedIp(ip) {
+  const v = normalizeClientIp(ip).toLowerCase();
+  if (!v) return true;
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(v)) {
+    const p = v.split('.').map(Number);
+    if (p.some(n => n < 0 || n > 255 || Number.isNaN(n))) return true;
+    if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+    if (p[0] === 169 && p[1] === 254) return true;
+    if (p[0] === 192 && p[1] === 168) return true;
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT
+    if (p[0] >= 224) return true;
+    return false;
+  }
+
+  // IPv6 local/reserved.
+  if (v === '::1' || v === '::' || v.startsWith('fe80:') || v.startsWith('fc') || v.startsWith('fd')) return true;
+  return false;
+}
+
+function forwardedIpCandidates(req) {
+  const values = [];
+  const push = raw => {
+    String(raw || '').split(',').forEach(part => {
+      const ip = normalizeClientIp(part);
+      if (ip && !values.includes(ip)) values.push(ip);
+    });
+  };
+
+  // Cloudflare gives the original visitor IP here when orange-cloud proxying is enabled.
+  push(req.get('cf-connecting-ip'));
+  push(req.get('true-client-ip'));
+  // Railway / reverse proxy forwarding chain.
+  push(req.get('x-forwarded-for'));
+  push(req.get('x-real-ip'));
+  push(req.ip);
+  push(req.socket?.remoteAddress);
+  push(req.connection?.remoteAddress);
+
+  return values;
+}
+
+function getRealClientIp(req) {
+  const candidates = forwardedIpCandidates(req);
+  return candidates.find(ip => !isPrivateOrReservedIp(ip)) || candidates[0] || '';
+}
+
+function validCountryCode(code) {
+  const c = String(code || '').trim().toUpperCase();
+  // Cloudflare can send XX (unknown) or T1 (Tor); don't treat those as a real country.
+  return /^[A-Z]{2}$/.test(c) && c !== 'XX';
+}
+
+function getCloudflareCountry(req) {
+  const code = String(req.get('cf-ipcountry') || '').trim().toUpperCase();
+  return validCountryCode(code) ? code : '';
+}
+
+function localGeoLookup(ip) {
+  try {
+    if (!ip || isPrivateOrReservedIp(ip)) return null;
+    const geo = require('geoip-lite').lookup(ip);
+    if (!geo) return null;
+    const code = validCountryCode(geo.country) ? String(geo.country).toUpperCase() : 'XX';
+    return {
+      countryCode: code,
+      country: countryInfo(code).name,
+      city: String(geo.city || ''),
+      region: String(geo.region || ''),
+      source: 'geoip-lite'
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function ipinfoLookup(ip) {
+  if (!IPINFO_TOKEN || !ip || isPrivateOrReservedIp(ip)) return null;
+
+  const cached = geoCache.get(ip);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
+
+  try {
+    const r = await fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${encodeURIComponent(IPINFO_TOKEN)}`, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json', 'User-Agent': 'THIS-PERSON-IS-BRAND-Shortener/7.20' }
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const code = validCountryCode(data.country) ? String(data.country).toUpperCase() : 'XX';
+    if (code === 'XX') return null;
+
+    const value = {
+      countryCode: code,
+      country: countryInfo(code).name,
+      city: String(data.city || ''),
+      region: String(data.region || ''),
+      source: 'ipinfo'
+    };
+    geoCache.set(ip, { value, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+    if (geoCache.size > 10000) {
+      const first = geoCache.keys().next().value;
+      if (first) geoCache.delete(first);
+    }
+    return value;
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveVisitorGeo(req, ip) {
+  // Highest-priority country signal when traffic really passes through Cloudflare.
+  const cfCountry = getCloudflareCountry(req);
+
+  // Optional premium/current external lookup when token is configured.
+  const remote = await ipinfoLookup(ip);
+  const local = localGeoLookup(ip);
+
+  if (cfCountry) {
+    return {
+      countryCode: cfCountry,
+      country: countryInfo(cfCountry).name,
+      city: remote?.city || local?.city || '',
+      region: remote?.region || local?.region || '',
+      source: 'cloudflare'
+    };
+  }
+
+  if (remote) return remote;
+  if (local && local.countryCode !== 'XX') return local;
+
+  return { countryCode:'XX', country:'Unknown', city:'', region:'', source:'unknown' };
 }
 function normalizeHost(host){ return String(host||'').split(':')[0].toLowerCase().replace(/^www\./,''); }
 function domainOrigin(domain){ const clean=normalizeHost(domain); return clean===normalizeHost(BASE_HOST)?BASE_URL:`https://${clean}`; }
@@ -468,7 +631,7 @@ async function auditAdmin(req,action,targetType='',targetId='',details=''){
   try{
     await pool.query(`INSERT INTO admin_audit_logs(admin_email,action,target_type,target_id,details,ip_address)
       VALUES($1,$2,$3,$4,$5,$6)`,
-      [ADMIN_EMAIL,String(action),String(targetType),String(targetId),String(details).slice(0,4000),normalizeClientIp(req.ip||'')]);
+      [ADMIN_EMAIL,String(action),String(targetType),String(targetId),String(details).slice(0,4000),getRealClientIp(req)]);
   }catch(e){ console.error('Audit log error:',e.message); }
 }
 async function getEnabledDomains(){
@@ -484,6 +647,20 @@ async function getDomainChoices(){
     selectable:!!r.enabled && !r.maintenance
   }));
 }
+
+function getDomainChoicesForUser(user, choices){
+  const all = Array.isArray(choices) ? choices : [];
+  if(user && user.isPremium) return all.map(d=>({...d,planRestricted:false}));
+  return all.map(d=>{
+    const allowed = FREE_PLAN_DOMAINS.has(normalizeHost(d.domain));
+    return {
+      ...d,
+      selectable: !!d.selectable && allowed,
+      planRestricted: !allowed
+    };
+  });
+}
+
 async function isDomainEnabled(domain){
   const d=normalizeHost(domain);
   const q=await pool.query('SELECT enabled,maintenance FROM domain_settings WHERE domain=$1',[d]);
@@ -494,18 +671,20 @@ async function authenticateApiKey(req,res,next){
     const raw=String(req.get('x-api-key')||req.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();
     if(!raw) return res.status(401).json({error:'API key required'});
     const hash=sha256(raw);
-    const q=await pool.query('SELECT * FROM users WHERE api_key_hash=$1 AND api_enabled=TRUE LIMIT 1',[hash]);
+    const q=await pool.query('SELECT * FROM users WHERE api_key_hash=$1 LIMIT 1',[hash]);
     if(!q.rowCount) return res.status(401).json({error:'Invalid or revoked API key'});
     const user=mapUser(q.rows[0]);
     if(user.accountStatus==='blocked') return res.status(403).json({error:'Account blocked'});
     if(!user.isPremium) return res.status(403).json({error:'Premium plan required for API access'});
+    if(!user.apiAdminEnabled) return res.status(403).json({error:'API access has been disabled by administrator'});
+    if(!user.apiEnabled) return res.status(403).json({error:'API access is turned off. Enable it from API Access settings.'});
     req.apiUser=user;
     next();
   }catch(e){ console.error('API auth error:',e); res.status(500).json({error:'API authentication error'}); }
 }
 async function createBackupSnapshot(createdBy='automatic'){
   const [users,links,clicks,payments,domains,notifications]=await Promise.all([
-    pool.query(`SELECT id,telegram_id,username,first_name,last_name,display_name,email,timezone,account_status,created_at,last_login,total_links,total_clicks,is_admin,plan_type,premium_until,api_enabled,api_key_prefix FROM users ORDER BY id`),
+    pool.query(`SELECT id,telegram_id,username,first_name,last_name,display_name,email,timezone,account_status,created_at,last_login,total_links,lifetime_links_created,total_clicks,is_admin,plan_type,premium_until,api_enabled,api_admin_enabled,api_key_prefix FROM users ORDER BY id`),
     pool.query('SELECT * FROM links ORDER BY id'),
     pool.query('SELECT * FROM clicks ORDER BY id DESC LIMIT 100000'),
     pool.query(`SELECT id,user_id,plan_months,amount,method,transaction_id,status,admin_note,created_at,reviewed_at FROM payments ORDER BY id`),
@@ -684,7 +863,7 @@ app.get('/dashboard',authMiddleware,async(req,res)=>{
     const freshUser=await getUserById(req.user.id);
     const linkR=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
     const links=linkR.rows.map(mapLink).map(l=>({...l,shortUrl:buildShortUrl(l)}));
-    const linkUsage=links.length;
+    const linkUsage=freshUser.isPremium ? links.length : Number(freshUser.lifetimeLinksCreated || 0);
     const linksRemaining=freshUser.isPremium?null:Math.max(0,FREE_LINK_LIMIT-linkUsage);
     const clickR=await pool.query('SELECT * FROM clicks WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
     const clicks=clickR.rows.map(mapClick);
@@ -730,7 +909,8 @@ app.get('/dashboard',authMiddleware,async(req,res)=>{
     const browserStats=Object.entries(browserMap).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,8);
     const uniqueClicks=uniqueIps.size;
     const activeUsers=await getActiveOnlineUsers();
-    const domainChoices=await getDomainChoices();
+    const allDomainChoices=await getDomainChoices();
+    const domainChoices=getDomainChoicesForUser(freshUser,allDomainChoices);
     const dashboardDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
     res.render('index',{page:'dashboard',user:freshUser,links,totalClicks,todayClicks,yesterdayClicks,weekClicks,monthClicks,yearClicks,uniqueClicks,topReferrers,browserStats,botClicks,realClicks,clickRate,onlineUsers:activeUsers.length,countryStats,deviceStats,weekData,chartDays,countries,onlineUserList:activeUsers.map(u=>({name:u.displayName||u.username||'User'})),freeLinkLimit:FREE_LINK_LIMIT,linkUsage,linksRemaining,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:dashboardDomains.filter(d=>d!==normalizeHost(BASE_HOST)),availableDomains:dashboardDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)});
   }catch(e){ console.error('Dashboard error:',e); res.redirect('/?error='+encodeURIComponent('Dashboard database error')); }
@@ -752,52 +932,108 @@ app.get('/my-links',authMiddleware,async(req,res)=>{
 // ===== SHORT LINK PAGE =====
 app.get('/shorten-page',authMiddleware,async(req,res)=>{
   try {
+    const freshUser=await getUserById(req.user.id);
     const r=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC LIMIT 12',[req.user.id]);
     const links=r.rows.map(mapLink).map(l=>({...l,shortUrl:buildShortUrl(l)})); const active=await getActiveOnlineUsers();
-    const domainChoices=await getDomainChoices();
+    const allDomainChoices=await getDomainChoices();
+    const domainChoices=getDomainChoicesForUser(freshUser,allDomainChoices);
     const enabledDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain), enabledCustom=enabledDomains.filter(d=>d!==normalizeHost(BASE_HOST));
-    res.render('index',{page:'shorten',user:req.user,links,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:enabledCustom,availableDomains:enabledDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL});
+    const linkUsage=freshUser.isPremium ? links.length : Number(freshUser.lifetimeLinksCreated || 0);
+    const linksRemaining=freshUser.isPremium ? null : Math.max(0,FREE_LINK_LIMIT-linkUsage);
+    res.render('index',{page:'shorten',user:freshUser,links,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:enabledCustom,availableDomains:enabledDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,freeLinkLimit:FREE_LINK_LIMIT,linkUsage,linksRemaining});
   }catch(e){console.error('Shorten page error:',e);res.redirect('/dashboard?error='+encodeURIComponent('Could not open short link page'));}
 });
 
 app.post('/shorten',authMiddleware,async(req,res)=>{
+  let client;
   try {
     const {originalUrl,customSlug,expiresIn,domain,linkPassword}=req.body;
     const requestedDomain=normalizeHost(domain||BASE_HOST);
-    const enabledDomains=await getEnabledDomains();
-    const selectedDomain=enabledDomains.map(normalizeHost).includes(requestedDomain)?requestedDomain:normalizeHost(BASE_HOST);
-    if(!(await isDomainEnabled(selectedDomain))) return res.redirect('/shorten-page?error='+encodeURIComponent('Selected domain is currently disabled or under maintenance.'));
-    const freshUser = await getUserById(req.user.id);
-    if (!freshUser.isPremium) {
-      const countR = await pool.query('SELECT COUNT(*)::int AS count FROM links WHERE user_id=$1',[req.user.id]);
-      if (Number(countR.rows[0].count) >= FREE_LINK_LIMIT) {
-        return res.redirect('/plans?error=' + encodeURIComponent(`Free plan limit reached (${FREE_LINK_LIMIT} links). Upgrade to Premium for unlimited links.`));
-      }
+    const enabledDomains=(await getEnabledDomains()).map(normalizeHost);
+    if(!enabledDomains.includes(requestedDomain)){
+      return res.redirect('/shorten-page?error='+encodeURIComponent('Selected domain is currently disabled or under maintenance.'));
     }
+
     if(!originalUrl)return res.redirect('/shorten-page?error='+encodeURIComponent('Please enter a URL'));
     const unsafe=validateDestinationUrl(originalUrl);
     if(unsafe)return res.redirect('/shorten-page?error='+encodeURIComponent(unsafe));
+
+    client=await pool.connect();
+    await client.query('BEGIN');
+
+    const userR=await client.query('SELECT * FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
+    if(!userR.rowCount){
+      await client.query('ROLLBACK');
+      return res.redirect('/login?error='+encodeURIComponent('User account not found'));
+    }
+    const freshUser=mapUser(userR.rows[0]);
+
+    if(!freshUser.isPremium){
+      if(!FREE_PLAN_DOMAINS.has(requestedDomain)){
+        await client.query('ROLLBACK');
+        return res.redirect('/plans?error='+encodeURIComponent('This domain is Premium-only. Free users can use only .world and .shop domains.'));
+      }
+      if(Number(freshUser.lifetimeLinksCreated||0) >= FREE_LINK_LIMIT){
+        await client.query('ROLLBACK');
+        return res.redirect('/plans?error='+encodeURIComponent(`Free lifetime limit reached (${FREE_LINK_LIMIT}/${FREE_LINK_LIMIT}). Deleting links does not restore quota. Upgrade to Premium for unlimited links.`));
+      }
+    }
+
     let shortCode=String(customSlug||'').trim();
     if(shortCode){
-      if(!/^[A-Za-z0-9_-]{2,80}$/.test(shortCode))return res.redirect('/shorten-page?error='+encodeURIComponent('Custom slug may use letters, numbers, - and _ only'));
-      const ex=await pool.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[selectedDomain,shortCode]);
-      if(ex.rowCount)return res.redirect('/shorten-page?error='+encodeURIComponent('Custom slug already taken on this domain'));
+      if(!/^[A-Za-z0-9_-]{2,80}$/.test(shortCode)){
+        await client.query('ROLLBACK');
+        return res.redirect('/shorten-page?error='+encodeURIComponent('Custom slug may use letters, numbers, - and _ only'));
+      }
+      const ex=await client.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[requestedDomain,shortCode]);
+      if(ex.rowCount){
+        await client.query('ROLLBACK');
+        return res.redirect('/shorten-page?error='+encodeURIComponent('Custom slug already taken on this domain'));
+      }
     } else {
-      for(let i=0;i<12;i++){const c=generateShortCode();const ex=await pool.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[selectedDomain,c]);if(!ex.rowCount){shortCode=c;break;}}
+      for(let i=0;i<12;i++){
+        const c=generateShortCode();
+        const ex=await client.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[requestedDomain,c]);
+        if(!ex.rowCount){shortCode=c;break;}
+      }
       if(!shortCode)throw new Error('Could not generate unique short code');
     }
-    let expiresAt=null;if(expiresIn){const days=parseInt(expiresIn);if(!isNaN(days))expiresAt=new Date(Date.now()+days*86400000);}
+
+    let expiresAt=null;
+    if(expiresIn){
+      const days=parseInt(expiresIn);
+      if(!isNaN(days))expiresAt=new Date(Date.now()+days*86400000);
+    }
+
     const passwordEnabled=!!String(linkPassword||'').trim();
-    if(passwordEnabled && !freshUser.isPremium) return res.redirect('/plans?error='+encodeURIComponent('Password-protected links are a Premium feature.'));
+    if(passwordEnabled && !freshUser.isPremium){
+      await client.query('ROLLBACK');
+      return res.redirect('/plans?error='+encodeURIComponent('Password-protected links are a Premium feature.'));
+    }
     const passwordHash=passwordEnabled?hashLinkPassword(linkPassword):null;
-    const q=await pool.query(`INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug,expires_at,password_hash,password_enabled)
+
+    const q=await client.query(`INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug,expires_at,password_hash,password_enabled)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [req.user.id,selectedDomain,originalUrl,shortCode,customSlug||null,expiresAt,passwordHash,passwordEnabled]);
-    await pool.query('UPDATE users SET total_links=total_links+1 WHERE id=$1',[req.user.id]);
-    const link=mapLink(q.rows[0]); const shortUrl=buildShortUrl(link);
+      [req.user.id,requestedDomain,originalUrl,shortCode,customSlug||null,expiresAt,passwordHash,passwordEnabled]);
+
+    await client.query(
+      'UPDATE users SET total_links=total_links+1,lifetime_links_created=lifetime_links_created+1 WHERE id=$1',
+      [req.user.id]
+    );
+
+    await client.query('COMMIT');
+
+    const link=mapLink(q.rows[0]);
+    const shortUrl=buildShortUrl(link);
     await notifyUser(req.user.id,'Short link created',`${shortUrl} was created successfully.`,'success');
     res.redirect('/shorten-page?success='+encodeURIComponent('Link created successfully!')+'&shortUrl='+encodeURIComponent(shortUrl));
-  }catch(e){console.error('Shorten error:',e);res.redirect('/shorten-page?error='+encodeURIComponent('Failed to create short link: '+e.message));}
+  }catch(e){
+    if(client){try{await client.query('ROLLBACK');}catch(_){}}
+    console.error('Shorten error:',e);
+    res.redirect('/shorten-page?error='+encodeURIComponent('Failed to create short link: '+e.message));
+  }finally{
+    if(client)client.release();
+  }
 });
 
 // ===== QR =====
@@ -951,6 +1187,7 @@ app.post('/api-access/generate', authMiddleware, async(req,res)=>{
   try{
     const user=await getUserById(req.user.id);
     if(!user.isPremium)return res.redirect('/plans?error='+encodeURIComponent('API access is available to Premium users only.'));
+    if(!user.apiAdminEnabled)return res.redirect('/api-access?error='+encodeURIComponent('API access is disabled by administrator. Contact admin to enable it.'));
     const key=makeApiKey(),hash=sha256(key),prefix=key.slice(0,18);
     await pool.query('UPDATE users SET api_key_hash=$1,api_key_prefix=$2,api_key_created_at=NOW(),api_enabled=TRUE WHERE id=$3',[hash,prefix,user.id]);
     req.session.generatedApiKey=key;
@@ -965,6 +1202,37 @@ app.post('/api-access/revoke', authMiddleware, async(req,res)=>{
     res.redirect('/api-access?success='+encodeURIComponent('API key revoked'));
   }catch(e){res.redirect('/api-access?error='+encodeURIComponent('Could not revoke API key'));}
 });
+
+app.post('/api-access/toggle', authMiddleware, async(req,res)=>{
+  try{
+    const user=await getUserById(req.user.id);
+    if(!user.isPremium)return res.redirect('/plans?error='+encodeURIComponent('API access is available to Premium users only.'));
+
+    const next=String(req.body.enabled||'').toLowerCase()==='true';
+
+    if(next){
+      if(!user.apiAdminEnabled){
+        return res.redirect('/api-access?error='+encodeURIComponent('API access is disabled by administrator. Contact admin to enable it.'));
+      }
+      if(!user.apiKeyPrefix){
+        return res.redirect('/api-access?error='+encodeURIComponent('Generate an API key first, then turn API access ON.'));
+      }
+    }
+
+    await pool.query('UPDATE users SET api_enabled=$1 WHERE id=$2',[next,user.id]);
+    await notifyUser(
+      user.id,
+      'API access updated',
+      next ? 'Your API access is now ON.' : 'Your API access is now OFF. Existing API key requests will be rejected until you turn it back on.',
+      next ? 'success' : 'info'
+    );
+    res.redirect('/api-access?success='+encodeURIComponent(next?'API access turned ON':'API access turned OFF'));
+  }catch(e){
+    console.error('API user toggle error:',e);
+    res.redirect('/api-access?error='+encodeURIComponent('Could not update API access'));
+  }
+});
+
 
 // Premium REST API
 app.post('/api/v1/shorten', authenticateApiKey, async(req,res)=>{
@@ -989,7 +1257,7 @@ app.post('/api/v1/shorten', authenticateApiKey, async(req,res)=>{
     const q=await pool.query(`INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug,expires_at,password_hash,password_enabled)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [user.id,requestedDomain,originalUrl,shortCode,customSlug||null,expiresAt,password?hashLinkPassword(password):null,!!password]);
-    await pool.query('UPDATE users SET total_links=total_links+1 WHERE id=$1',[user.id]);
+    await pool.query('UPDATE users SET total_links=total_links+1,lifetime_links_created=lifetime_links_created+1 WHERE id=$1',[user.id]);
     const link=mapLink(q.rows[0]),shortUrl=buildShortUrl(link);
     res.status(201).json({success:true,id:link.id,shortUrl,domain:link.selectedDomain,shortCode:link.shortCode,expiresAt:link.expiresAt,passwordProtected:link.passwordEnabled});
   }catch(e){console.error('API shorten error:',e);res.status(500).json({error:'Could not create short link'});}
@@ -1166,6 +1434,33 @@ app.post('/admin/users/:id/block', adminMiddleware, async(req,res)=>{
     res.redirect('/admin?success='+encodeURIComponent(`User ${next}`));
   }catch(e){res.redirect('/admin?error='+encodeURIComponent('Could not update user'));}
 });
+
+app.post('/admin/users/:id/api-toggle', adminMiddleware, async(req,res)=>{
+  try{
+    const id=Number(req.params.id);
+    const u=await getUserById(id);
+    if(!u)return res.redirect('/admin?error='+encodeURIComponent('User not found'));
+
+    const next=!u.apiAdminEnabled;
+    await pool.query('UPDATE users SET api_admin_enabled=$1 WHERE id=$2',[next,id]);
+
+    await auditAdmin(req,'api_admin_toggle','user',id,`api_admin_enabled=${next}`);
+    await notifyUser(
+      id,
+      'API administrator access updated',
+      next
+        ? 'Administrator enabled API access for your account. You can turn your own API ON from API Access settings.'
+        : 'Administrator disabled API access for your account. API requests will remain blocked until admin enables it again.',
+      next ? 'success' : 'warning'
+    );
+
+    res.redirect('/admin?success='+encodeURIComponent(next?'User API admin access enabled':'User API admin access disabled'));
+  }catch(e){
+    console.error('Admin API toggle error:',e);
+    res.redirect('/admin?error='+encodeURIComponent('Could not update user API access'));
+  }
+});
+
 app.post('/admin/users/:id/plan', adminMiddleware, async(req,res)=>{
   try{
     const id=Number(req.params.id),months=Number(req.body.months||0);
@@ -1322,8 +1617,18 @@ app.get('/:code',async(req,res)=>{
         return res.status(401).render('index',{page:'link-password',user,link,unlockError:req.query.unlockError==='1',onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:null,success:null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)});
       }
     }
-    const ip=normalizeClientIp(req.ip||req.connection.remoteAddress||''),ua=req.headers['user-agent']||'',ref=req.headers['referer']||req.headers['referrer']||'',bot=isBot(ua),di=getDeviceInfo(ua);let countryCode='XX';try{const geo=require('geoip-lite').lookup(ip);if(geo?.country)countryCode=String(geo.country).toUpperCase();}catch(e){}
-    await pool.query(`INSERT INTO clicks(link_id,user_id,ip_address,user_agent,device,browser,os,country,country_code,referrer,is_bot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,[link.id,link.userId,ip,ua,di.device,di.browser,di.os,countryInfo(countryCode).name,countryCode,ref,bot]);
+    const ip=getRealClientIp(req);
+    const ua=req.headers['user-agent']||'';
+    const ref=req.headers['referer']||req.headers['referrer']||'';
+    const bot=isBot(ua);
+    const di=getDeviceInfo(ua);
+    const geo=await resolveVisitorGeo(req,ip);
+
+    await pool.query(
+      `INSERT INTO clicks(link_id,user_id,ip_address,user_agent,device,browser,os,country,country_code,city,region,referrer,is_bot)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [link.id,link.userId,ip,ua,di.device,di.browser,di.os,geo.country,geo.countryCode,geo.city,geo.region,ref,bot]
+    );
     if(!bot){await Promise.all([pool.query('UPDATE links SET clicks=clicks+1 WHERE id=$1',[link.id]),pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId])]);}
     if(isSocialPreviewBot(ua))return renderSocialPreview(req,res,link);res.set('Cache-Control','no-store');return res.redirect(302,link.originalUrl);
   }catch(e){console.error('Redirect error:',e);res.status(500).send('Error redirecting');}
