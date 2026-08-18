@@ -994,6 +994,28 @@ app.post('/api/v1/shorten', authenticateApiKey, async(req,res)=>{
     res.status(201).json({success:true,id:link.id,shortUrl,domain:link.selectedDomain,shortCode:link.shortCode,expiresAt:link.expiresAt,passwordProtected:link.passwordEnabled});
   }catch(e){console.error('API shorten error:',e);res.status(500).json({error:'Could not create short link'});}
 });
+// ===== V7.17 BOT/API DOMAIN SYNC + LINK EDIT =====
+app.get('/api/v1/domains', authenticateApiKey, async(req,res)=>{
+  try{
+    const domains=await getDomainChoices();
+    res.json({baseDomain:normalizeHost(BASE_HOST),domains:domains.map(d=>({domain:d.domain,enabled:!!d.enabled,maintenance:!!d.maintenance,selectable:!!d.selectable,health:d.lastHealth||'unknown'}))});
+  }catch(e){console.error('API domains error:',e);res.status(500).json({error:'Could not load domains'});}
+});
+
+app.patch('/api/v1/links/:id', authenticateApiKey, async(req,res)=>{
+  try{
+    const id=Number(req.params.id);
+    if(!Number.isInteger(id)||id<=0)return res.status(400).json({error:'Invalid link ID'});
+    const originalUrl=String(req.body.url||req.body.originalUrl||'').trim();
+    if(!originalUrl)return res.status(400).json({error:'Destination URL is required'});
+    const unsafe=validateDestinationUrl(originalUrl);if(unsafe)return res.status(400).json({error:unsafe});
+    const q=await pool.query(`UPDATE links SET original_url=$1,updated_at=NOW() WHERE id=$2 AND user_id=$3 RETURNING *`,[originalUrl,id,req.apiUser.id]);
+    if(!q.rowCount)return res.status(404).json({error:'Link not found or not owned by this API account'});
+    const link=mapLink(q.rows[0]);
+    res.json({success:true,id:link.id,shortUrl:buildShortUrl(link),originalUrl:link.originalUrl,domain:link.selectedDomain,shortCode:link.shortCode,updatedAt:link.updatedAt});
+  }catch(e){console.error('API link edit error:',e);res.status(500).json({error:'Could not update short link'});}
+});
+
 app.get('/api/v1/links', authenticateApiKey, async(req,res)=>{
   try{
     const q=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[req.apiUser.id]);
