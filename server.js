@@ -1062,7 +1062,7 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:null,info:null,shortUrl:null,customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),
-      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||''});
+      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||''});
   }catch(err){console.error('Google shortlink page error:',err);res.redirect('/dashboard?error='+encodeURIComponent('Could not open Google Shortlink tool'));}
 });
 
@@ -1175,7 +1175,9 @@ app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
     return res.redirect(
       '/google-shortlink?success='+encodeURIComponent('Google Style Shortlink created!')+
       '&googleStyleUrl='+encodeURIComponent(googleStyleUrl)+
-      '&googleStyleOriginal='+encodeURIComponent(originalUrl)
+      '&googleStyleOriginal='+encodeURIComponent(originalUrl)+
+      '&googleStyleDomain='+encodeURIComponent(requestedDomain)+
+      '&googleStyleCode='+encodeURIComponent(shortCode)
     );
   }catch(err){
     if(client){try{await client.query('ROLLBACK');}catch(_){}}
