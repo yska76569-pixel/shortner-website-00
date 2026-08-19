@@ -3145,7 +3145,7 @@
             <div class="brand-center">
               <div class="google-tool-icon">G</div>
               <h1>Google Shortlink</h1>
-              <p>Convert an existing <code>share.google</code> / <code>search.app</code> short link, then shorten the converted URL on your own domain.</p>
+              <p>Use a real Google-generated <code>share.google</code> / <code>search.app</code> link, then shorten it again on your own domain.</p>
             </div>
 
             <div class="glass-card google-convert-card">
@@ -3157,7 +3157,7 @@
 
               <div class="google-api-note">
                 <i class="fas fa-circle-info"></i>
-                <span><strong>Important:</strong> Google itself creates the <code>share.google</code>/<code>search.app</code> ID in the Google app. This server does not fake or invent a Google token. Paste the Google-generated link here for conversion.</span>
+                <span><strong>Important:</strong> Google creates the <code>share.google</code>/<code>search.app</code> token inside the Google app. This website does not invent a fake Google token. Paste a real Google-generated link here, then create your branded short link.</span>
               </div>
             </div>
 
@@ -4206,6 +4206,12 @@
                 if (!win) return showToast('Popup blocked. Allow popups to view QR.', 'error');
 
                 var safeUrl = String(data.url || '');
+                var safeUrlHtml = safeUrl
+                    .replace(/&/g,'&amp;')
+                    .replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;')
+                    .replace(/"/g,'&quot;')
+                    .replace(/'/g,'&#039;');
                 win.document.write(
                     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
                     '<title>QR Code</title></head>' +
@@ -4213,29 +4219,10 @@
                     '<div style="max-width:420px;width:100%;background:#151d38;border:1px solid #2b3c68;padding:24px;border-radius:22px;">' +
                     '<h2 style="margin-top:0">QR Code</h2>' +
                     '<div style="background:white;padding:16px;border-radius:16px;display:inline-block"><img alt="QR Code" style="display:block;max-width:280px;width:75vw;height:auto" src="' + data.qr + '"></div>' +
-                    '<p style="word-break:break-all;color:#9eeaff;font-size:14px;line-height:1.5">' + safeUrl + '</p>' +
+                    '<p style="word-break:break-all;color:#9eeaff;font-size:14px;line-height:1.5">' + safeUrlHtml + '</p>' +
                     '<p style="color:#9eacc8;font-size:12px">This QR opens the exact selected short-link domain.</p>' +
                     '<button onclick="window.close()" style="margin-top:8px;padding:10px 18px;background:#6c63ff;border:0;border-radius:10px;color:white;cursor:pointer">Close</button>' +
-                    '</div>
-<script>
-document.addEventListener('DOMContentLoaded',function(){
-  var panel=document.getElementById('publicLiveStats');
-  if(!panel)return;
-  async function refreshPublicLiveStats(){
-    try{
-      var r=await fetch('/api/live-stats',{cache:'no-store'});
-      var d=await r.json();
-      ['users','links','realClicks','websiteVisitors','liveVisitors','pageViews'].forEach(function(k){
-        var el=panel.querySelector('[data-live="'+k+'"]');
-        if(el && d[k]!==undefined) el.textContent=Number(d[k]||0).toLocaleString();
-      });
-    }catch(_){}
-  }
-  setInterval(refreshPublicLiveStats,10000);
-});
-</script>
-
-</body></html>'
+                    '</div></body></html>'
                 );
                 win.document.close();
             } catch (e) {
@@ -4629,6 +4616,32 @@ document.addEventListener('DOMContentLoaded',function(){
                 if (logoutForm) logoutForm.submit();
             }
         });
+    </script>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded',function(){
+      var panel=document.getElementById('publicLiveStats');
+      if(!panel)return;
+
+      async function refreshPublicLiveStats(){
+        try{
+          var r=await fetch('/api/live-stats',{cache:'no-store'});
+          if(!r.ok)return;
+          var d=await r.json();
+
+          ['users','links','realClicks','websiteVisitors','liveVisitors','pageViews'].forEach(function(k){
+            var el=panel.querySelector('[data-live="'+k+'"]');
+            if(el && d[k]!==undefined){
+              el.textContent=Number(d[k]||0).toLocaleString();
+            }
+          });
+        }catch(_){}
+      }
+
+      refreshPublicLiveStats();
+      setInterval(refreshPublicLiveStats,10000);
+    });
     </script>
 
 </body>
