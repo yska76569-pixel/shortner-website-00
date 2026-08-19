@@ -2249,6 +2249,28 @@
         .api-control-note i{color:#83E7FF!important;margin-top:.1rem}
         .btn[disabled]{opacity:.48!important;cursor:not-allowed!important;filter:grayscale(.25)}
 
+
+        /* ===== V7.22 GOOGLE SHORTLINK + LIVE TRACKING ===== */
+        .live-tracking-panel{position:relative;overflow:hidden}
+        .live-track-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+        .live-track-head small{color:var(--text-muted)}
+        .live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#33e6a1;box-shadow:0 0 16px #33e6a1;animation:livePulse 1.4s infinite}
+        @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.75)}}
+        .google-shortlink-page{max-width:1000px;margin:auto}
+        .google-tool-icon{width:64px;height:64px;margin:0 auto .8rem;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;background:linear-gradient(135deg,#4285f4,#34a853,#fbbc05,#ea4335);color:#fff;box-shadow:0 16px 40px rgba(66,133,244,.2)}
+        .google-convert-card,.google-output-card{margin-bottom:1.3rem}
+        .google-step{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+        .google-step>span{width:36px;height:36px;flex:0 0 auto;border-radius:11px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(124,92,255,.25),rgba(39,215,255,.15));border:1px solid rgba(124,92,255,.25);font-weight:900}
+        .google-step>div{display:flex;flex-direction:column;gap:.1rem}
+        .google-step small{color:var(--text-muted)}
+        .google-convert-btn{width:100%;justify-content:center;min-height:48px}
+        .google-api-note{margin-top:1rem;padding:.8rem;border-radius:13px;display:flex;gap:.6rem;align-items:flex-start;background:rgba(66,133,244,.06);border:1px solid rgba(66,133,244,.14);color:var(--text-muted);line-height:1.55}
+        .google-api-note i{color:#8ab4f8!important;margin-top:.15rem}
+        .google-result-box{display:flex;gap:.6rem;align-items:center;padding:.75rem;border-radius:14px;background:rgba(5,10,28,.55);border:1px solid var(--glass-border)}
+        .google-result-box code{flex:1;word-break:break-all;color:#9eeeff}
+        .google-domain-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:.8rem}
+        @media(max-width:700px){.google-domain-grid{grid-template-columns:1fr}.google-result-box{align-items:stretch;flex-direction:column}}
+
 </style>
 </head>
 <body>
@@ -2393,6 +2415,7 @@
                     <a class="<%= page === 'dashboard' ? 'active' : '' %>" href="/dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
                     <a class="<%= page === 'shorten' ? 'active' : '' %>" href="/shorten-page"><i class="fas fa-plus"></i><span>Create Link</span></a>
                     <a class="<%= page === 'my-links' ? 'active' : '' %>" href="/my-links"><i class="fas fa-link"></i><span>My Short Links</span></a>
+                    <a class="<%= page === 'google-shortlink' ? 'active' : '' %>" href="/google-shortlink"><i class="fab fa-google"></i><span>Google Shortlink</span></a>
                     <a class="<%= page === 'api-access' ? 'active' : '' %>" href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                     <a class="<%= page === 'notifications' ? 'active' : '' %>" href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
                     <a class="<%= page === 'plans' ? 'active' : '' %>" href="/plans"><i class="fas fa-crown"></i><span>Plans & Payment</span></a>
@@ -2587,11 +2610,19 @@
                     <% } %>
                 </div>
             </div>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="number"><%= typeof totalUsers !== 'undefined' ? totalUsers : 0 %></div><div class="label">Registered Users</div></div>
-                <div class="stat-card"><div class="number"><%= typeof onlineUsers !== 'undefined' ? onlineUsers : 0 %></div><div class="label">Online Now</div></div>
-                <div class="stat-card"><div class="number">302</div><div class="label">Fast Redirect</div></div>
-                <div class="stat-card"><div class="number"><%= 1 + (typeof customDomains !== 'undefined' ? customDomains.length : 0) %></div><div class="label">Ready Domains</div></div>
+            <div class="glass-card live-tracking-panel" style="margin-bottom:2rem;">
+                <div class="live-track-head">
+                    <div><span class="live-dot"></span><strong> LIVE TRACKING</strong></div>
+                    <small>Auto refresh every 10 seconds</small>
+                </div>
+                <div class="stats-grid" id="publicLiveStats" style="margin-top:1rem;">
+                    <div class="stat-card"><div class="number" data-live="users"><%= liveStats ? liveStats.users : 0 %></div><div class="label">Registered Users</div></div>
+                    <div class="stat-card"><div class="number" data-live="links"><%= liveStats ? liveStats.links : 0 %></div><div class="label">Total Links Created</div></div>
+                    <div class="stat-card"><div class="number" data-live="realClicks"><%= liveStats ? liveStats.realClicks : 0 %></div><div class="label">Real Link Clicks</div></div>
+                    <div class="stat-card"><div class="number" data-live="websiteVisitors"><%= liveStats ? liveStats.websiteVisitors : 0 %></div><div class="label">Website Visitors</div></div>
+                    <div class="stat-card"><div class="number" data-live="liveVisitors"><%= liveStats ? liveStats.liveVisitors : 0 %></div><div class="label">Visiting Now</div></div>
+                    <div class="stat-card"><div class="number" data-live="pageViews"><%= liveStats ? liveStats.pageViews : 0 %></div><div class="label">Page Views</div></div>
+                </div>
             </div>
             <div class="glass-card" style="margin-bottom:2rem;">
                 <h2 style="margin-bottom:.5rem;">✨ What this shortener can do</h2>
@@ -3107,7 +3138,56 @@
             </div>
         <% } %>
 
-        <!-- ===== SHORT LINK PAGE ===== -->
+        
+        <!-- ===== GOOGLE SHORTLINK PAGE ===== -->
+        <% if (page === 'google-shortlink') { %>
+          <div class="fade-in google-shortlink-page">
+            <div class="brand-center">
+              <div class="google-tool-icon">G</div>
+              <h1>Google Shortlink</h1>
+              <p>Convert an existing <code>share.google</code> / <code>search.app</code> short link, then shorten the converted URL on your own domain.</p>
+            </div>
+
+            <div class="glass-card google-convert-card">
+              <div class="google-step"><span>1</span><div><strong>Paste Google Share URL</strong><small>Example: https://share.google/XXXXXXXX</small></div></div>
+              <form method="POST" action="/google-shortlink/convert">
+                <div class="form-group"><input class="form-control" type="url" name="googleUrl" required value="<%= typeof googleInput!=='undefined'?googleInput:'' %>" placeholder="https://share.google/XXXXXXXX"></div>
+                <button class="btn btn-primary google-convert-btn"><i class="fas fa-wand-magic-sparkles"></i> Convert URL</button>
+              </form>
+
+              <div class="google-api-note">
+                <i class="fas fa-circle-info"></i>
+                <span><strong>Important:</strong> Google itself creates the <code>share.google</code>/<code>search.app</code> ID in the Google app. This server does not fake or invent a Google token. Paste the Google-generated link here for conversion.</span>
+              </div>
+            </div>
+
+            <% if (typeof googleConvertedUrl!=='undefined' && googleConvertedUrl) { %>
+              <div class="glass-card google-output-card">
+                <div class="google-step"><span>2</span><div><strong>Converted Google URL</strong><small>Ready to copy or shorten on your domain.</small></div></div>
+                <div class="google-result-box">
+                  <code id="googleConvertedOutput"><%= googleConvertedUrl %></code>
+                  <button type="button" class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('googleConvertedOutput').textContent)">Copy</button>
+                </div>
+
+                <div class="google-step" style="margin-top:1.2rem;"><span>3</span><div><strong>Shorten on THIS PERSON IS BRAND</strong><small>Your normal plan/domain rules still apply.</small></div></div>
+                <form method="POST" action="/shorten">
+                  <input type="hidden" name="originalUrl" value="<%= googleConvertedUrl %>">
+                  <div class="google-domain-grid">
+                    <div class="form-group"><label>Short Domain</label><select class="form-control" name="domain" required>
+                      <% (domainChoices||[]).forEach(function(d){ %>
+                        <option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance':' — Unavailable')) %></option>
+                      <% }); %>
+                    </select></div>
+                    <div class="form-group"><label>Custom Path (optional)</label><input class="form-control" name="customSlug" placeholder="google-link"></div>
+                  </div>
+                  <button class="btn btn-primary google-convert-btn"><i class="fas fa-link"></i> Create My Short Link</button>
+                </form>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+
+<!-- ===== SHORT LINK PAGE ===== -->
         <% if (page === 'shorten') { %>
             <div class="fade-in">
                 <div style="text-align:center;margin-bottom:2rem;">
@@ -4136,7 +4216,26 @@
                     '<p style="word-break:break-all;color:#9eeaff;font-size:14px;line-height:1.5">' + safeUrl + '</p>' +
                     '<p style="color:#9eacc8;font-size:12px">This QR opens the exact selected short-link domain.</p>' +
                     '<button onclick="window.close()" style="margin-top:8px;padding:10px 18px;background:#6c63ff;border:0;border-radius:10px;color:white;cursor:pointer">Close</button>' +
-                    '</div></body></html>'
+                    '</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var panel=document.getElementById('publicLiveStats');
+  if(!panel)return;
+  async function refreshPublicLiveStats(){
+    try{
+      var r=await fetch('/api/live-stats',{cache:'no-store'});
+      var d=await r.json();
+      ['users','links','realClicks','websiteVisitors','liveVisitors','pageViews'].forEach(function(k){
+        var el=panel.querySelector('[data-live="'+k+'"]');
+        if(el && d[k]!==undefined) el.textContent=Number(d[k]||0).toLocaleString();
+      });
+    }catch(_){}
+  }
+  setInterval(refreshPublicLiveStats,10000);
+});
+</script>
+
+</body></html>'
                 );
                 win.document.close();
             } catch (e) {
