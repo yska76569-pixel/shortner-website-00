@@ -437,7 +437,9 @@ function generateShortCode() {
   let code=''; for(let i=0;i<6;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
   return code;
 }
-function isBot(ua){ return /bot|crawler|spider|scraper|facebook|twitter|linkedin|pinterest|slack|discord|whatsapp|telegram|instagram/i.test(ua||''); }
+function isBot(ua){
+  return /bot|crawler|spider|scraper|facebookexternalhit|facebot|twitterbot|linkedinbot|pinterest|slackbot|discordbot|whatsapp|telegrambot|instagram|headlesschrome|phantomjs|selenium|playwright|puppeteer|curl\/|wget\/|python-requests|python\/|aiohttp|httpclient|okhttp|go-http-client|java\//i.test(ua||'');
+}
 function isSocialPreviewBot(ua){ return /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|discordbot|slackbot|pinterest|skypeuripreview/i.test(ua||''); }
 function getDeviceInfo(ua='') {
   let device='Desktop',browser='Unknown',os='Unknown';
@@ -855,10 +857,15 @@ async function getPublicLiveStats(){
 function isLikelyAutomatedRequest(req,ua){
   const agent=String(ua||'');
   const purpose=String(req.get('purpose')||req.get('sec-purpose')||req.get('x-purpose')||'').toLowerCase();
+  const secFetchMode=String(req.get('sec-fetch-mode')||'').toLowerCase();
+  const secFetchDest=String(req.get('sec-fetch-dest')||'').toLowerCase();
+  const secFetchSite=String(req.get('sec-fetch-site')||'').toLowerCase();
   if(req.method==='HEAD') return true;
   if(!agent.trim()) return true;
   if(isBot(agent)||isSocialPreviewBot(agent)) return true;
   if(/prefetch|preview|prerender/.test(purpose)) return true;
+  if(secFetchDest==='empty' && /prefetch|prerender/.test(purpose)) return true;
+  // Do not classify normal browser navigations as bots just because they have no referrer.
   return false;
 }
 
@@ -982,7 +989,7 @@ app.get('/dashboard',authMiddleware,async(req,res)=>{
   try {
     const freshUser=await getUserById(req.user.id);
     const linkR=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
-    const links=linkR.rows.map(mapLink).map(l=>({...l,shortUrl:buildShortUrl(l)}));
+    const links=linkR.rows.map(mapLink).map(l=>({...l,shortUrl:l.linkType==='google_style'?buildGoogleStyleShortUrl(l):buildShortUrl(l)}));
     const linkUsage=freshUser.isPremium ? links.length : Number(freshUser.lifetimeLinksCreated || 0);
     const linksRemaining=freshUser.isPremium?null:Math.max(0,FREE_LINK_LIMIT-linkUsage);
     const clickR=await pool.query('SELECT * FROM clicks WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
@@ -1061,6 +1068,7 @@ app.get('/links/:id/stats',authMiddleware,async(req,res)=>{
     const clickR=await pool.query('SELECT * FROM clicks WHERE link_id=$1 ORDER BY created_at DESC',[link.id]);
     const clicks=clickR.rows.map(mapClick);
     const realClicks=clicks.filter(c=>!c.isBot);
+    const perLinkBotClicks=clicks.filter(c=>c.isBot).length;
     const uniqueVisitors=new Set(realClicks.map(c=>c.ipAddress).filter(Boolean)).size;
     const countryMap={};
     for(const c of realClicks){
@@ -1075,11 +1083,64 @@ app.get('/links/:id/stats',authMiddleware,async(req,res)=>{
     const dayMap=new Map(chartDays.map((d,i)=>[d.key,i]));
     for(const c of realClicks){const d=new Date(c.createdAt);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if(dayMap.has(key))chartDays[dayMap.get(key)].clicks++;}
     const active=await getActiveOnlineUsers();
-    res.render('index',{page:'link-stats',user:freshUser,link,linkClicks:realClicks,totalLinkClicks:realClicks.length,uniqueVisitors,countryStats,chartDays,countries,
+    res.render('index',{page:'link-stats',user:freshUser,link,linkClicks:realClicks,totalLinkClicks:realClicks.length,perLinkBotClicks,uniqueVisitors,countryStats,chartDays,countries,
       onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),error:null,success:null,info:null,shortUrl:null,
       customDomains:[],availableDomains:[],domainChoices:[],baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)});
   }catch(e){console.error('Per-link stats error:',e);res.redirect('/my-links?error='+encodeURIComponent('Could not load link statistics.'));}
 });
+
+
+async function getGoogleStyleAnalytics(userId){
+  const [linksR,clicksR]=await Promise.all([
+    pool.query("SELECT * FROM links WHERE user_id=$1 AND link_type='google_style' ORDER BY created_at DESC LIMIT 100",[userId]),
+    pool.query(`SELECT c.* FROM clicks c
+                JOIN links l ON l.id=c.link_id
+                WHERE l.user_id=$1 AND l.link_type='google_style'
+                ORDER BY c.created_at DESC LIMIT 5000`,[userId])
+  ]);
+
+  const googleStyleLinks=linksR.rows.map(mapLink).map(l=>({...l,shortUrl:buildGoogleStyleShortUrl(l)}));
+  const clicks=clicksR.rows.map(mapClick);
+  const realClicks=clicks.filter(c=>!c.isBot);
+  const botClicks=clicks.filter(c=>c.isBot);
+  const uniqueVisitors=new Set(realClicks.map(c=>c.ipAddress).filter(Boolean)).size;
+
+  const countryMap={};
+  for(const c of realClicks){
+    const cc=String(c.countryCode||'XX').toUpperCase();
+    if(!countryMap[cc]) countryMap[cc]={countryCode:cc,country:c.country||countryInfo(cc).name,count:0};
+    countryMap[cc].count++;
+  }
+  const countryStats=Object.values(countryMap).sort((a,b)=>b.count-a.count).slice(0,10);
+
+  const today=new Date();today.setHours(0,0,0,0);
+  const chartDays=[];
+  for(let i=13;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    chartDays.push({key,label:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),clicks:0});
+  }
+  const dayMap=new Map(chartDays.map((d,i)=>[d.key,i]));
+  for(const c of realClicks){
+    const d=new Date(c.createdAt);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(dayMap.has(key)) chartDays[dayMap.get(key)].clicks++;
+  }
+
+  return {
+    googleStyleLinks,
+    googleAnalytics:{
+      totalLinks:googleStyleLinks.length,
+      realClicks:realClicks.length,
+      uniqueVisitors,
+      countries:countryStats.length,
+      botClicks:botClicks.length,
+      countryStats,
+      chartDays,
+      recentClicks:realClicks.slice(0,20)
+    }
+  };
+}
 
 // ===== GOOGLE SHORTLINK TOOL =====
 // Google officially generates share.google/search.app short IDs inside the Google app.
@@ -1093,11 +1154,10 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
     const allChoices=await getDomainChoices();
     const domainChoices=getDomainChoicesForUser(freshUser,allChoices);
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
-    const googleStyleRows=await pool.query("SELECT * FROM links WHERE user_id=$1 AND link_type='google_style' ORDER BY created_at DESC LIMIT 25",[req.user.id]);
-    const googleStyleLinks=googleStyleRows.rows.map(mapLink).map(l=>({...l,shortUrl:buildGoogleStyleShortUrl(l)}));
+    const {googleStyleLinks,googleAnalytics}=await getGoogleStyleAnalytics(req.user.id);
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:null,info:null,shortUrl:null,customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),
-      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||'',googleStyleLinks});
+      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||'',googleStyleLinks,googleAnalytics});
   }catch(err){console.error('Google shortlink page error:',err);res.redirect('/dashboard?error='+encodeURIComponent('Could not open Google Shortlink tool'));}
 });
 
@@ -1110,10 +1170,11 @@ app.post('/google-shortlink/convert',authMiddleware,async(req,res)=>{
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
     const raw=String(req.body.googleUrl||'').trim();
     const parsed=parseGoogleShareInput(raw);
+    const {googleStyleLinks,googleAnalytics}=await getGoogleStyleAnalytics(req.user.id);
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:parsed.error||null,success:parsed.error?null:'Google short link converted successfully.',info:null,shortUrl:null,
       customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,
-      googleInput:raw,googleConvertedUrl:parsed.convertedUrl||'',googleShortUrl:parsed.shortGoogleUrl||'',googleStyleUrl:'',googleStyleOriginal:''});
+      googleInput:raw,googleConvertedUrl:parsed.convertedUrl||'',googleShortUrl:parsed.shortGoogleUrl||'',googleStyleUrl:'',googleStyleOriginal:'',googleStyleDomain:'',googleStyleCode:'',googleStyleLinks,googleAnalytics});
   }catch(err){console.error('Google shortlink convert error:',err);res.redirect('/google-shortlink?error='+encodeURIComponent('Conversion failed'));}
 });
 
@@ -1223,13 +1284,13 @@ app.get('/shorten-page',authMiddleware,async(req,res)=>{
   try {
     const freshUser=await getUserById(req.user.id);
     const r=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC LIMIT 12',[req.user.id]);
-    const links=r.rows.map(mapLink).map(l=>({...l,shortUrl:buildShortUrl(l)})); const active=await getActiveOnlineUsers();
+    const links=r.rows.map(mapLink).map(l=>({...l,shortUrl:l.linkType==='google_style'?buildGoogleStyleShortUrl(l):buildShortUrl(l)})); const active=await getActiveOnlineUsers();
     const allDomainChoices=await getDomainChoices();
     const domainChoices=getDomainChoicesForUser(freshUser,allDomainChoices);
     const enabledDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain), enabledCustom=enabledDomains.filter(d=>d!==normalizeHost(BASE_HOST));
     const linkUsage=freshUser.isPremium ? links.length : Number(freshUser.lifetimeLinksCreated || 0);
     const linksRemaining=freshUser.isPremium ? null : Math.max(0,FREE_LINK_LIMIT-linkUsage);
-    res.render('index',{page:'shorten',user:freshUser,links,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:enabledCustom,availableDomains:enabledDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,freeLinkLimit:FREE_LINK_LIMIT,linkUsage,linksRemaining});
+    res.render('index',{page:'shorten',user:freshUser,links,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,createdLinkId:req.query.createdLinkId||null,customDomains:enabledCustom,availableDomains:enabledDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,freeLinkLimit:FREE_LINK_LIMIT,linkUsage,linksRemaining});
   }catch(e){console.error('Shorten page error:',e);res.redirect('/dashboard?error='+encodeURIComponent('Could not open short link page'));}
 });
 
@@ -1315,7 +1376,7 @@ app.post('/shorten',authMiddleware,async(req,res)=>{
     const link=mapLink(q.rows[0]);
     const shortUrl=buildShortUrl(link);
     await notifyUser(req.user.id,'Short link created',`${shortUrl} was created successfully.`,'success');
-    res.redirect('/shorten-page?success='+encodeURIComponent('Link created successfully!')+'&shortUrl='+encodeURIComponent(shortUrl));
+    res.redirect('/shorten-page?success='+encodeURIComponent('Link created successfully!')+'&shortUrl='+encodeURIComponent(shortUrl)+'&createdLinkId='+encodeURIComponent(link.id));
   }catch(e){
     if(client){try{await client.query('ROLLBACK');}catch(_){}}
     console.error('Shorten error:',e);
@@ -1690,7 +1751,7 @@ app.post('/admin/logout', (req,res)=>{ delete req.session.admin; req.session.sav
 
 app.get('/admin', adminMiddleware, async (req,res)=>{
   try {
-    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR] = await Promise.all([
+    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR,topCountriesR,topUserCountriesR,userRealStatsR] = await Promise.all([
       pool.query('SELECT * FROM users ORDER BY created_at DESC LIMIT 500'),
       pool.query(`SELECT l.*,u.display_name,u.username FROM links l JOIN users u ON u.id=l.user_id ORDER BY l.created_at DESC LIMIT 500`),
       pool.query(`SELECT p.*,u.display_name,u.username,u.email FROM payments p JOIN users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 300`),
@@ -1700,16 +1761,105 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
       pool.query('SELECT * FROM admin_audit_logs ORDER BY created_at DESC LIMIT 100'),
       pool.query('SELECT * FROM domain_settings ORDER BY domain=$1 DESC,domain ASC',[normalizeHost(BASE_HOST)]),
       pool.query('SELECT id,created_at,created_by FROM app_backups ORDER BY created_at DESC LIMIT 20'),
-      pool.query('SELECT * FROM announcements ORDER BY updated_at DESC,id DESC LIMIT 20')
+      pool.query('SELECT * FROM announcements ORDER BY updated_at DESC,id DESC LIMIT 20'),
+      pool.query(`SELECT country_code,MAX(country) AS country,COUNT(*)::bigint AS count
+                  FROM clicks WHERE is_bot=FALSE
+                  GROUP BY country_code ORDER BY count DESC LIMIT 10`),
+      pool.query(`SELECT c.user_id,u.display_name,u.username,c.country_code,MAX(c.country) AS country,COUNT(*)::bigint AS count
+                  FROM clicks c JOIN users u ON u.id=c.user_id
+                  WHERE c.is_bot=FALSE
+                  GROUP BY c.user_id,u.display_name,u.username,c.country_code
+                  ORDER BY count DESC LIMIT 10`),
+      pool.query(`SELECT u.id,
+                    COUNT(c.id) FILTER (WHERE c.is_bot=FALSE)::bigint AS real_clicks,
+                    COUNT(c.id) FILTER (WHERE c.is_bot=TRUE)::bigint AS bot_clicks,
+                    COUNT(DISTINCT c.ip_address) FILTER (WHERE c.is_bot=FALSE AND c.ip_address<>'')::bigint AS unique_visitors
+                  FROM users u LEFT JOIN clicks c ON c.user_id=u.id
+                  GROUP BY u.id`)
     ]);
-    const users=usersR.rows.map(mapUser);
+    const userRealMap=new Map(userRealStatsR.rows.map(r=>[Number(r.id),{
+      realClicks:Number(r.real_clicks||0),botClicks:Number(r.bot_clicks||0),uniqueVisitors:Number(r.unique_visitors||0)
+    }]));
+    const users=usersR.rows.map(mapUser).map(u=>({...u,...(userRealMap.get(u.id)||{realClicks:0,botClicks:0,uniqueVisitors:0})}));
     res.render('index',{page:'admin',user:req.session?.user?.id?await getUserById(req.session.user.id):null,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,
       error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL,
-      adminUsers:users,adminLinks:linksR.rows,adminPayments:payR.rows,adminAudit:auditR.rows,adminDomains:domainsR.rows,adminBackups:backupsR.rows,adminAnnouncements:announcementsR.rows,
+      adminUsers:users,adminLinks:linksR.rows,adminPayments:payR.rows,adminAudit:auditR.rows,adminDomains:domainsR.rows,adminBackups:backupsR.rows,adminAnnouncements:announcementsR.rows,adminTopCountries:topCountriesR.rows,adminTopUserCountries:topUserCountriesR.rows,
       adminStats:{totalUsers:users.length,online:active.length,totalLinks:linksR.rows.length,totalClicks:Number(totalClicksR.rows[0].count),botClicks:Number(botClicksR.rows[0].count),pendingPayments:payR.rows.filter(p=>p.status==='pending').length},
       freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
     });
   }catch(e){console.error('Admin page error:',e);res.redirect('/admin/login?error='+encodeURIComponent('Admin page database error'));}
+});
+
+
+app.get('/admin/users/:id/stats', adminMiddleware, async(req,res)=>{
+  try{
+    const targetId=Number(req.params.id);
+    const targetUser=await getUserById(targetId);
+    if(!targetUser) return res.redirect('/admin?error='+encodeURIComponent('User not found'));
+
+    const [linksR,clicksR,topCountriesR,topLinksR]=await Promise.all([
+      pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC',[targetId]),
+      pool.query('SELECT * FROM clicks WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1000',[targetId]),
+      pool.query(`SELECT country_code,MAX(country) AS country,COUNT(*)::bigint AS count
+                  FROM clicks WHERE user_id=$1 AND is_bot=FALSE
+                  GROUP BY country_code ORDER BY count DESC LIMIT 10`,[targetId]),
+      pool.query(`SELECT l.id,l.short_code,l.selected_domain,l.original_url,l.link_type,
+                    COUNT(c.id) FILTER (WHERE c.is_bot=FALSE)::bigint AS real_clicks,
+                    COUNT(c.id) FILTER (WHERE c.is_bot=TRUE)::bigint AS bot_clicks
+                  FROM links l LEFT JOIN clicks c ON c.link_id=l.id
+                  WHERE l.user_id=$1
+                  GROUP BY l.id ORDER BY real_clicks DESC LIMIT 10`,[targetId])
+    ]);
+
+    const allClicks=clicksR.rows.map(mapClick);
+    const realClicks=allClicks.filter(c=>!c.isBot);
+    const botClicks=allClicks.filter(c=>c.isBot);
+    const uniqueVisitors=new Set(realClicks.map(c=>c.ipAddress).filter(Boolean)).size;
+
+    const today=new Date();today.setHours(0,0,0,0);
+    const chartDays=[];
+    for(let i=13;i>=0;i--){
+      const d=new Date(today);d.setDate(d.getDate()-i);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      chartDays.push({key,label:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),clicks:0});
+    }
+    const dayMap=new Map(chartDays.map((d,i)=>[d.key,i]));
+    for(const c of realClicks){
+      const d=new Date(c.createdAt);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(dayMap.has(key)) chartDays[dayMap.get(key)].clicks++;
+    }
+
+    const topLinks=topLinksR.rows.map(r=>{
+      const l=mapLink(r);
+      return {...l,realClicks:Number(r.real_clicks||0),botClicks:Number(r.bot_clicks||0),
+        shortUrl:l.linkType==='google_style'?buildGoogleStyleShortUrl(l):buildShortUrl(l)};
+    });
+    const active=await getActiveOnlineUsers();
+
+    res.render('index',{
+      page:'admin-user-stats',
+      user:req.session?.user?.id?await getUserById(req.session.user.id):null,
+      targetUser,
+      targetLinks:linksR.rows.map(mapLink),
+      targetRealClicks:realClicks.length,
+      targetBotClicks:botClicks.length,
+      targetUniqueVisitors:uniqueVisitors,
+      targetTopCountries:topCountriesR.rows,
+      targetTopLinks:topLinks,
+      targetRecentClicks:realClicks.slice(0,50),
+      targetChartDays:chartDays,
+      countries,
+      onlineUsers:active.length,
+      onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
+      error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,
+      customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,domainChoices:[],
+      baseDomain:BASE_HOST,baseUrl:BASE_URL
+    });
+  }catch(e){
+    console.error('Admin user stats error:',e);
+    res.redirect('/admin?error='+encodeURIComponent('Could not load user statistics'));
+  }
 });
 
 app.post('/admin/users/:id/block', adminMiddleware, async(req,res)=>{
