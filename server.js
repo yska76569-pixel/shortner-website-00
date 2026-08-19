@@ -256,6 +256,7 @@ async function initDatabase() {
 
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS link_type TEXT NOT NULL DEFAULT 'standard';
 
     CREATE TABLE IF NOT EXISTS notifications (
       id BIGSERIAL PRIMARY KEY,
@@ -343,7 +344,7 @@ function mapLink(r) {
     originalUrl: r.original_url, shortCode: r.short_code, customSlug: r.custom_slug,
     title: r.title || '', clicks: Number(r.clicks || 0), isActive: !!r.is_active,
     isExpired: !!r.is_expired, expiresAt: toIso(r.expires_at), createdAt: toIso(r.created_at), updatedAt: toIso(r.updated_at),
-    passwordEnabled: !!r.password_enabled
+    passwordEnabled: !!r.password_enabled, linkType: r.link_type || 'standard'
   };
 }
 function mapClick(r) {
@@ -1040,7 +1041,7 @@ app.get('/my-links',authMiddleware,async(req,res)=>{
   try{
     const freshUser=await getUserById(req.user.id);
     const r=await pool.query('SELECT * FROM links WHERE user_id=$1 ORDER BY created_at DESC',[req.user.id]);
-    const links=r.rows.map(mapLink).map(l=>({...l,shortUrl:buildShortUrl(l)}));
+    const links=r.rows.map(mapLink).map(l=>({...l,shortUrl:l.linkType==='google_style'?buildGoogleStyleShortUrl(l):buildShortUrl(l)}));
     const active=await getActiveOnlineUsers();
     const domainChoices=await getDomainChoices();
     const enabledDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
@@ -1060,9 +1061,11 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
     const allChoices=await getDomainChoices();
     const domainChoices=getDomainChoicesForUser(freshUser,allChoices);
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
+    const googleStyleRows=await pool.query("SELECT * FROM links WHERE user_id=$1 AND link_type='google_style' ORDER BY created_at DESC LIMIT 25",[req.user.id]);
+    const googleStyleLinks=googleStyleRows.rows.map(mapLink).map(l=>({...l,shortUrl:buildGoogleStyleShortUrl(l)}));
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:null,info:null,shortUrl:null,customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),
-      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||''});
+      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||'',googleStyleLinks});
   }catch(err){console.error('Google shortlink page error:',err);res.redirect('/dashboard?error='+encodeURIComponent('Could not open Google Shortlink tool'));}
 });
 
@@ -1150,8 +1153,8 @@ app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
     }
 
     const q=await client.query(
-      `INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug)
-       VALUES($1,$2,$3,$4,$5) RETURNING *`,
+      `INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug,link_type)
+       VALUES($1,$2,$3,$4,$5,'google_style') RETURNING *`,
       [freshUser.id,requestedDomain,originalUrl,shortCode,customSlug||null]
     );
 
