@@ -601,6 +601,11 @@ function normalizeHost(host){ return String(host||'').split(':')[0].toLowerCase(
 function domainOrigin(domain){ const clean=normalizeHost(domain); return clean===normalizeHost(BASE_HOST)?BASE_URL:`https://${clean}`; }
 function getBaseUrl(req){ const host=normalizeHost(req.get('host')); return AVAILABLE_DOMAINS.map(normalizeHost).includes(host)?domainOrigin(host):BASE_URL; }
 function buildShortUrl(link){ return `${domainOrigin(normalizeHost(link.selectedDomain||BASE_HOST))}/${link.shortCode}`; }
+
+function buildGoogleStyleShortUrl(link){
+  return `${domainOrigin(normalizeHost(link.selectedDomain||BASE_HOST))}/share.google?q=${encodeURIComponent(link.shortCode)}`;
+}
+
 function escapeHtml(v){ return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
 function sha256(v){ return crypto.createHash('sha256').update(String(v)).digest('hex'); }
@@ -1057,7 +1062,7 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:null,info:null,shortUrl:null,customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),
-      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:''});
+      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||''});
   }catch(err){console.error('Google shortlink page error:',err);res.redirect('/dashboard?error='+encodeURIComponent('Could not open Google Shortlink tool'));}
 });
 
@@ -1072,8 +1077,113 @@ app.post('/google-shortlink/convert',authMiddleware,async(req,res)=>{
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:parsed.error||null,success:parsed.error?null:'Google short link converted successfully.',info:null,shortUrl:null,
       customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,
-      googleInput:raw,googleConvertedUrl:parsed.convertedUrl||'',googleShortUrl:parsed.shortGoogleUrl||''});
+      googleInput:raw,googleConvertedUrl:parsed.convertedUrl||'',googleShortUrl:parsed.shortGoogleUrl||'',googleStyleUrl:'',googleStyleOriginal:''});
   }catch(err){console.error('Google shortlink convert error:',err);res.redirect('/google-shortlink?error='+encodeURIComponent('Conversion failed'));}
+});
+
+
+app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
+  let client;
+  try{
+    const originalUrl=String(req.body.originalUrl||'').trim();
+    const requestedDomain=normalizeHost(req.body.domain||BASE_HOST);
+    const customSlug=String(req.body.customSlug||'').trim();
+
+    if(!originalUrl){
+      return res.redirect('/google-shortlink?error='+encodeURIComponent('Please enter a destination URL.'));
+    }
+    const unsafe=validateDestinationUrl(originalUrl);
+    if(unsafe){
+      return res.redirect('/google-shortlink?error='+encodeURIComponent(unsafe));
+    }
+
+    const enabledDomains=(await getEnabledDomains()).map(normalizeHost);
+    if(!enabledDomains.includes(requestedDomain)){
+      return res.redirect('/google-shortlink?error='+encodeURIComponent('Selected domain is disabled or under maintenance.'));
+    }
+
+    client=await pool.connect();
+    await client.query('BEGIN');
+
+    const userR=await client.query('SELECT * FROM users WHERE id=$1 FOR UPDATE',[req.user.id]);
+    if(!userR.rowCount){
+      await client.query('ROLLBACK');
+      return res.redirect('/login?error='+encodeURIComponent('User account not found'));
+    }
+    const freshUser=mapUser(userR.rows[0]);
+
+    if(!freshUser.isPremium){
+      if(!FREE_PLAN_DOMAINS.has(requestedDomain)){
+        await client.query('ROLLBACK');
+        return res.redirect('/plans?error='+encodeURIComponent('This domain is Premium-only. Free users can use only .world and .shop domains.'));
+      }
+      if(Number(freshUser.lifetimeLinksCreated||0) >= FREE_LINK_LIMIT){
+        await client.query('ROLLBACK');
+        return res.redirect('/plans?error='+encodeURIComponent(`Free lifetime limit reached (${FREE_LINK_LIMIT}/${FREE_LINK_LIMIT}). Deleting links does not restore quota.`));
+      }
+    }
+
+    let shortCode=customSlug;
+    if(shortCode){
+      if(!/^[A-Za-z0-9_-]{2,80}$/.test(shortCode)){
+        await client.query('ROLLBACK');
+        return res.redirect('/google-shortlink?error='+encodeURIComponent('Custom code may use letters, numbers, - and _ only.'));
+      }
+      const ex=await client.query(
+        'SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',
+        [requestedDomain,shortCode]
+      );
+      if(ex.rowCount){
+        await client.query('ROLLBACK');
+        return res.redirect('/google-shortlink?error='+encodeURIComponent('That code is already taken on this domain.'));
+      }
+    }else{
+      for(let i=0;i<20;i++){
+        const candidate=crypto.randomBytes(12).toString('base64url').replace(/[^A-Za-z0-9_-]/g,'').slice(0,18);
+        const ex=await client.query(
+          'SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',
+          [requestedDomain,candidate]
+        );
+        if(!ex.rowCount){shortCode=candidate;break;}
+      }
+      if(!shortCode) throw new Error('Could not generate unique short code');
+    }
+
+    const q=await client.query(
+      `INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug)
+       VALUES($1,$2,$3,$4,$5) RETURNING *`,
+      [freshUser.id,requestedDomain,originalUrl,shortCode,customSlug||null]
+    );
+
+    await client.query(
+      'UPDATE users SET total_links=total_links+1,lifetime_links_created=lifetime_links_created+1 WHERE id=$1',
+      [freshUser.id]
+    );
+
+    await client.query('COMMIT');
+
+    const link=mapLink(q.rows[0]);
+    const googleStyleUrl=buildGoogleStyleShortUrl(link);
+
+    await notifyUser(
+      freshUser.id,
+      'Google Style Shortlink created',
+      `${googleStyleUrl} was created successfully.`,
+      'success'
+    );
+
+    return res.redirect(
+      '/google-shortlink?success='+encodeURIComponent('Google Style Shortlink created!')+
+      '&googleStyleUrl='+encodeURIComponent(googleStyleUrl)+
+      '&googleStyleOriginal='+encodeURIComponent(originalUrl)
+    );
+  }catch(err){
+    if(client){try{await client.query('ROLLBACK');}catch(_){}}
+    console.error('Google style shortlink error:',err);
+    return res.redirect('/google-shortlink?error='+encodeURIComponent('Could not create Google Style Shortlink: '+err.message));
+  }finally{
+    if(client) client.release();
+  }
 });
 
 // ===== SHORT LINK PAGE =====
@@ -1750,20 +1860,31 @@ app.post('/unlock/:id', async(req,res)=>{
 });
 
 // ===== SHORT URL REDIRECT (keep after all named routes) =====
-app.get('/:code',async(req,res)=>{
+async function handleStoredLinkRedirect(req,res,row){
   try{
-    const code=req.params.code;if(['favicon.ico','robots.txt','sitemap.xml'].includes(code))return res.status(404).send('Not found');
-    const requestHost=normalizeHost(req.get('host'));const q=await pool.query('SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',[requestHost,code]);if(!q.rowCount)return res.status(404).send('Link not found or inactive');let link=mapLink(q.rows[0]);
-    if(link.isExpired||(link.expiresAt&&new Date(link.expiresAt)<new Date())){await pool.query('UPDATE links SET is_expired=TRUE WHERE id=$1',[link.id]);return res.status(410).send('This link has expired');}
+    let link=mapLink(row);
+
+    if(link.isExpired||(link.expiresAt&&new Date(link.expiresAt)<new Date())){
+      await pool.query('UPDATE links SET is_expired=TRUE WHERE id=$1',[link.id]);
+      return res.status(410).send('This link has expired');
+    }
+
     const uaPre=req.headers['user-agent']||'';
-    if(q.rows[0].password_enabled && q.rows[0].password_hash && !isSocialPreviewBot(uaPre)){
+    if(row.password_enabled && row.password_hash && !isSocialPreviewBot(uaPre)){
       const unlocked=req.session?.unlockedLinks?.[String(link.id)];
       if(!unlocked || Number(unlocked)<Date.now()){
         const active=await getActiveOnlineUsers();
         const user=req.session?.user?.id?await getUserById(req.session.user.id):null;
-        return res.status(401).render('index',{page:'link-password',user,link,unlockError:req.query.unlockError==='1',onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:null,success:null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)});
+        return res.status(401).render('index',{
+          page:'link-password',user,link,unlockError:req.query.unlockError==='1',
+          onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
+          countries,error:null,success:null,info:null,shortUrl:null,
+          customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,
+          baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)
+        });
       }
     }
+
     const ip=getRealClientIp(req);
     const ua=req.headers['user-agent']||'';
     const ref=req.headers['referer']||req.headers['referrer']||'';
@@ -1776,9 +1897,62 @@ app.get('/:code',async(req,res)=>{
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [link.id,link.userId,ip,ua,di.device,di.browser,di.os,geo.country,geo.countryCode,geo.city,geo.region,ref,bot]
     );
-    if(!bot){await Promise.all([pool.query('UPDATE links SET clicks=clicks+1 WHERE id=$1',[link.id]),pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId])]);}
-    if(isSocialPreviewBot(ua))return renderSocialPreview(req,res,link);res.set('Cache-Control','no-store');return res.redirect(302,link.originalUrl);
-  }catch(e){console.error('Redirect error:',e);res.status(500).send('Error redirecting');}
+
+    if(!bot){
+      await Promise.all([
+        pool.query('UPDATE links SET clicks=clicks+1 WHERE id=$1',[link.id]),
+        pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId])
+      ]);
+    }
+
+    if(isSocialPreviewBot(ua)) return renderSocialPreview(req,res,link);
+
+    res.set('Cache-Control','no-store');
+    return res.redirect(302,link.originalUrl);
+  }catch(e){
+    console.error('Stored link redirect error:',e);
+    return res.status(500).send('Error redirecting');
+  }
+}
+
+// Google-style URL on YOUR OWN DOMAIN:
+// https://your-domain/share.google?q=CODE
+app.get('/share.google',async(req,res)=>{
+  try{
+    const code=String(req.query.q||'').trim();
+    if(!code) return res.status(400).send('Missing q parameter');
+
+    const requestHost=normalizeHost(req.get('host'));
+    const q=await pool.query(
+      'SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',
+      [requestHost,code]
+    );
+    if(!q.rowCount) return res.status(404).send('Link not found or inactive');
+
+    return handleStoredLinkRedirect(req,res,q.rows[0]);
+  }catch(e){
+    console.error('Google-style redirect error:',e);
+    return res.status(500).send('Error redirecting');
+  }
+});
+
+app.get('/:code',async(req,res)=>{
+  try{
+    const code=req.params.code;
+    if(['favicon.ico','robots.txt','sitemap.xml'].includes(code)) return res.status(404).send('Not found');
+
+    const requestHost=normalizeHost(req.get('host'));
+    const q=await pool.query(
+      'SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',
+      [requestHost,code]
+    );
+    if(!q.rowCount) return res.status(404).send('Link not found or inactive');
+
+    return handleStoredLinkRedirect(req,res,q.rows[0]);
+  }catch(e){
+    console.error('Redirect error:',e);
+    return res.status(500).send('Error redirecting');
+  }
 });
 
 // ===== 404 =====
