@@ -2560,6 +2560,320 @@
   .google-style-output-label{font-size:.5rem!important}
 }
 
+
+/* ===== V7.30 ULTRA SHARP TEXT + REAL FLAG IMAGES ===== */
+:root{
+  --v730-text:#F7FAFF;
+  --v730-text-soft:#C9D5EC;
+  --v730-muted:#9FAFCC;
+  --v730-border:rgba(151,170,211,.22);
+}
+
+html{
+  -webkit-text-size-adjust:100%;
+  text-rendering:optimizeLegibility;
+}
+
+body,
+button,
+input,
+select,
+textarea,
+a,
+span,
+div,
+p,
+small,
+strong,
+label,
+code,
+h1,h2,h3,h4,h5,h6{
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:geometricPrecision;
+}
+
+body{
+  color:var(--v730-text)!important;
+}
+
+h1,h2,h3,h4,h5,h6,
+.dashboard-kicker,
+.google-style-output-label,
+.live-track-head strong,
+.my-links-panel-title h2,
+.analytics-card-title h3{
+  color:#FFFFFF!important;
+  font-weight:800!important;
+  letter-spacing:-.015em!important;
+  text-shadow:0 1px 0 rgba(255,255,255,.02);
+}
+
+p,
+small,
+.link-original,
+.analytics-card-title p,
+.google-saved-original,
+.google-api-note,
+.google-style-success-sub{
+  color:var(--v730-text-soft)!important;
+  font-weight:500!important;
+}
+
+label,
+.form-group label,
+.stats-update-field label{
+  color:#DCE6F8!important;
+  font-weight:700!important;
+}
+
+a,
+.link-url,
+.per-link-primary-url,
+.google-saved-url{
+  text-decoration-thickness:1.5px;
+  text-underline-offset:2px;
+}
+
+.btn,
+button,
+.copy-btn{
+  font-weight:800!important;
+  letter-spacing:0!important;
+  text-shadow:none!important;
+  -webkit-font-smoothing:antialiased!important;
+  border-width:1px!important;
+}
+
+.btn.btn-secondary,
+.btn-secondary{
+  color:#F7FAFF!important;
+  background:rgba(255,255,255,.075)!important;
+  border-color:rgba(180,198,235,.20)!important;
+}
+
+.btn.btn-secondary:hover,
+.btn-secondary:hover{
+  background:rgba(255,255,255,.12)!important;
+  border-color:rgba(180,198,235,.30)!important;
+}
+
+.btn-primary{
+  color:#FFFFFF!important;
+}
+
+input,
+select,
+textarea,
+.form-control{
+  color:#F7FAFF!important;
+  font-weight:600!important;
+  border-color:rgba(177,194,230,.20)!important;
+}
+
+input::placeholder,
+textarea::placeholder{
+  color:#8EA0C1!important;
+  opacity:1!important;
+}
+
+.link-meta,
+.per-link-mini-meta,
+.country-item,
+.per-click-row,
+.mini-summary-card span,
+.stat-card .label{
+  color:#D6E0F2!important;
+  font-weight:600!important;
+}
+
+.mini-summary-card strong,
+.stat-card .number,
+.per-link-bar-num{
+  color:#FFFFFF!important;
+  font-weight:900!important;
+}
+
+.badge{
+  font-weight:800!important;
+  letter-spacing:.005em!important;
+}
+
+.glass-card,
+.link-card,
+.stat-card,
+.mini-summary-card{
+  border-color:var(--v730-border)!important;
+}
+
+/* Real country flag images: consistent on Windows, Android and iOS */
+.country-name{
+  display:flex!important;
+  align-items:center!important;
+  gap:.5rem!important;
+  min-width:0;
+}
+
+.country-flag-wrap{
+  width:26px;
+  min-width:26px;
+  height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.country-flag-img{
+  width:24px!important;
+  height:18px!important;
+  object-fit:cover!important;
+  border-radius:3px!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.16),0 3px 8px rgba(0,0,0,.20);
+  vertical-align:middle;
+  flex:0 0 auto;
+}
+
+.recent-flag{
+  width:26px!important;
+  height:19px!important;
+}
+
+.country-code-fallback{
+  min-width:26px;
+  height:20px;
+  padding:0 .25rem;
+  border-radius:4px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.12);
+  color:#FFFFFF!important;
+  font-size:.52rem;
+  font-weight:900;
+  line-height:1;
+}
+
+/* Statistics page clarity */
+.per-link-identity-compact{
+  background:linear-gradient(135deg,rgba(55,76,128,.34),rgba(26,36,75,.34))!important;
+}
+
+.per-link-primary-url{
+  color:#8FE8FF!important;
+  font-size:1rem!important;
+  font-weight:900!important;
+}
+
+.per-link-destination{
+  color:#C8D5EA!important;
+}
+
+.per-link-destination span{
+  color:#FFFFFF!important;
+}
+
+.click-cell strong{
+  color:#F7FAFF!important;
+  font-weight:800!important;
+}
+
+.click-cell small{
+  color:#A9BAD5!important;
+  font-weight:600!important;
+}
+
+.per-click-head{
+  color:#E1E9F8!important;
+  font-weight:900!important;
+}
+
+.country-item strong{
+  color:#FFFFFF!important;
+  font-weight:900!important;
+}
+
+.per-link-bar-label{
+  color:#C6D3EA!important;
+  font-weight:700!important;
+}
+
+.per-link-bar-num{
+  font-size:.62rem!important;
+}
+
+/* Slightly larger desktop UI for readability */
+@media(min-width:1000px){
+  body{font-size:15px!important}
+  .sidebar a,.sidebar button{font-size:.78rem!important}
+  .btn{font-size:.73rem!important}
+  .link-meta,.per-link-mini-meta{font-size:.68rem!important}
+  .country-item{font-size:.72rem!important}
+  .click-cell strong{font-size:.72rem!important}
+  .click-cell small{font-size:.61rem!important}
+  .per-click-head{font-size:.60rem!important}
+}
+
+/* Mobile: keep everything readable and prevent tiny compressed text */
+@media(max-width:760px){
+  body{font-size:15px!important}
+  h1{font-size:1.65rem!important;line-height:1.12!important}
+  h2{font-size:1.15rem!important}
+  h3{font-size:1rem!important}
+
+  .sidebar a,.sidebar button{
+    font-size:.82rem!important;
+  }
+
+  .btn{
+    min-height:42px;
+    font-size:.75rem!important;
+  }
+
+  .per-link-primary-url{
+    font-size:.82rem!important;
+  }
+
+  .per-link-destination,
+  .link-original{
+    font-size:.70rem!important;
+  }
+
+  .link-meta,
+  .per-link-mini-meta{
+    font-size:.66rem!important;
+  }
+
+  .click-cell strong{
+    font-size:.72rem!important;
+  }
+
+  .click-cell small{
+    font-size:.62rem!important;
+  }
+
+  .country-item{
+    font-size:.72rem!important;
+    min-height:48px;
+  }
+
+  .country-flag-img{
+    width:28px!important;
+    height:20px!important;
+  }
+
+  .recent-flag{
+    width:30px!important;
+    height:22px!important;
+  }
+}
+
+@media(max-width:420px){
+  body{font-size:14px!important}
+  .btn{font-size:.72rem!important}
+  .per-link-primary-url{font-size:.76rem!important}
+}
+
 </style>
 </head>
 <body>
@@ -3494,7 +3808,15 @@
       <div class="country-grid">
         <% if(countryStats.length){ var cmax=countryStats[0].count||1; countryStats.forEach(function(c){var ci=countries[c.countryCode] || countries['XX'];var pct=Math.round(c.count/cmax*100); %>
           <div class="country-item">
-            <span class="country-name"><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span>
+            <span class="country-name">
+              <% if((c.countryCode||'XX') !== 'XX'){ %>
+                <img class="country-flag-img" src="https://flagcdn.com/24x18/<%= String(c.countryCode).toLowerCase() %>.png" alt="<%= c.countryCode %> flag" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                <span class="country-code-fallback" style="display:none;"><%= c.countryCode %></span>
+              <% } else { %>
+                <span class="country-code-fallback">🌐</span>
+              <% } %>
+              <%= ci.name %>
+            </span>
             <span class="country-count-wrap"><strong><%= c.count %></strong><span class="per-country-track"><span style="width:<%= pct %>%"></span></span></span>
           </div>
         <% }); } else { %><div class="google-saved-empty">No real click country data yet.</div><% } %>
@@ -3519,7 +3841,14 @@
           <% linkClicks.slice(0,50).forEach(function(c){if(c.isBot)return;var ci=countries[c.countryCode||'XX'] || countries['XX']; %>
             <div class="per-click-row">
               <div class="click-cell click-country" data-label="Country">
-                <span class="country-flag"><%= ci.flag %></span>
+                <span class="country-flag-wrap">
+                  <% if((c.countryCode||'XX') !== 'XX'){ %>
+                    <img class="country-flag-img recent-flag" src="https://flagcdn.com/24x18/<%= String(c.countryCode).toLowerCase() %>.png" alt="<%= c.countryCode %> flag" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                    <span class="country-code-fallback" style="display:none;"><%= c.countryCode %></span>
+                  <% } else { %>
+                    <span class="country-code-fallback">🌐</span>
+                  <% } %>
+                </span>
                 <div><strong><%= ci.name %></strong><small><%= c.countryCode || 'XX' %></small></div>
               </div>
               <div class="click-cell" data-label="Device / Browser">
