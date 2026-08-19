@@ -2432,6 +2432,15 @@
 .google-saved-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.65rem}
 .google-saved-empty{text-align:center;padding:1.3rem;color:var(--text-muted)}
 
+
+/* V7.28 PER-LINK ANALYTICS */
+.per-link-identity{margin-bottom:1rem}.per-link-identity>a{display:block;color:#8fe8ff;font-size:1rem;font-weight:900;word-break:break-all;margin:.25rem 0}
+.per-link-chart-card,.per-link-country-card,.per-link-recent{margin-top:1rem}.per-link-chart-card h3,.per-link-country-card h3,.per-link-recent h3{margin-bottom:1rem}
+.per-link-bars{height:250px;display:flex;gap:.45rem;align-items:flex-end;overflow-x:auto;padding:.5rem .2rem}.per-link-bar-col{height:100%;min-width:42px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}.per-link-bar-num{font-size:.62rem;color:#8fe8ff;margin-bottom:.25rem}.per-link-bar-track{height:180px;width:70%;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:flex-end;overflow:hidden}.per-link-bar-fill{width:100%;background:linear-gradient(180deg,var(--accent),var(--primary));border-radius:8px 8px 3px 3px;min-height:2px}.per-link-bar-label{font-size:.54rem;color:var(--text-muted);margin-top:.35rem;white-space:nowrap}
+.per-country-track{display:inline-block;width:70px;height:4px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden}.per-country-track>span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}
+.per-click-row{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.2fr;gap:.7rem;padding:.65rem .25rem;border-bottom:1px solid rgba(255,255,255,.06);font-size:.65rem;color:var(--text-muted)}
+@media(max-width:760px){.per-click-row{grid-template-columns:1fr 1fr}.per-link-bars{height:220px}.per-link-bar-track{height:150px}}
+
 </style>
 </head>
 <body>
@@ -3289,7 +3298,7 @@
                             <div class="link-meta"><span><i class="fas fa-arrow-pointer"></i> <%= link.clicks || 0 %> clicks</span><span><i class="fas fa-globe"></i> <%= link.selectedDomain %></span><% if(link.linkType==='google_style'){ %><span class="badge badge-active"><i class="fab fa-google"></i> Google Style</span><% } %><% if(link.passwordEnabled){ %><span><i class="fas fa-lock"></i> Password</span><% } %><span class="badge <%= link.isActive ? 'badge-active' : 'badge-inactive' %>"><%= link.isActive ? 'Active' : 'Disabled' %></span></div>
                             <div class="link-actions">
                                 <form action="/links/<%= link.id %>/update" method="POST" class="edit-form"><input type="url" name="originalUrl" value="<%= link.originalUrl %>" required><button class="btn btn-sm btn-secondary" type="submit"><i class="fas fa-pen"></i> Update</button></form>
-                                <div class="btn-group"><form action="/links/<%= link.id %>/toggle" method="POST"><button class="btn btn-sm btn-secondary" type="submit"><%= link.isActive ? 'Disable' : 'Enable' %></button></form><form action="/links/<%= link.id %>/delete" method="POST" onsubmit="return confirm('Delete this short link?')"><button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash"></i> Delete</button></form></div>
+                                <div class="btn-group"><a class="btn btn-sm btn-primary" href="/links/<%= link.id %>/stats"><i class="fas fa-chart-line"></i> Statistics</a><form action="/links/<%= link.id %>/toggle" method="POST"><button class="btn btn-sm btn-secondary" type="submit"><%= link.isActive ? 'Disable' : 'Enable' %></button></form><form action="/links/<%= link.id %>/delete" method="POST" onsubmit="return confirm('Delete this short link?')"><button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash"></i> Delete</button></form></div>
                             </div>
                         </div>
                     <% }); %>
@@ -3300,7 +3309,22 @@
         <% } %>
 
         
-        <!-- ===== GOOGLE SHORTLINK PAGE ===== -->
+        <% if (page === 'link-stats') { %>
+  <div class="fade-in per-link-stats-page">
+    <div class="my-links-header"><div><div class="dashboard-kicker">LINK ANALYTICS</div><h1><i class="fas fa-chart-line"></i> Link Statistics</h1><p>Statistics for this short link only.</p></div><a href="/my-links" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> My Links</a></div>
+    <div class="glass-card per-link-identity">
+      <div class="google-style-output-label">SHORT LINK</div><a href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
+      <div class="link-original">→ <%= link.originalUrl %></div>
+      <div class="link-meta"><span>🌐 <%= link.selectedDomain %></span><span>🆔 <%= link.shortCode %></span><% if(link.linkType==='google_style'){ %><span class="badge badge-active">Google Style</span><% } %></div>
+    </div>
+    <div class="my-links-summary per-link-summary"><div class="mini-summary-card"><span>Real Clicks</span><strong><%= totalLinkClicks %></strong></div><div class="mini-summary-card"><span>Unique Visitors</span><strong><%= uniqueVisitors %></strong></div><div class="mini-summary-card"><span>Countries</span><strong><%= countryStats.length %></strong></div></div>
+    <div class="glass-card per-link-chart-card"><h3>📈 Click Graph — Last 14 Days</h3><div class="per-link-bars"><% var mx=Math.max(1,...chartDays.map(function(d){return d.clicks})); chartDays.forEach(function(d){ %><div class="per-link-bar-col" title="<%= d.label %>: <%= d.clicks %> clicks"><div class="per-link-bar-num"><%= d.clicks %></div><div class="per-link-bar-track"><div class="per-link-bar-fill" style="height:<%= Math.max(d.clicks?8:2,Math.round((d.clicks/mx)*100)) %>%"></div></div><div class="per-link-bar-label"><%= d.label %></div></div><% }); %></div></div>
+    <div class="glass-card per-link-country-card"><h3>🌍 Real Country Breakdown</h3><div class="country-grid"><% if(countryStats.length){ var cmax=countryStats[0].count||1; countryStats.forEach(function(c){var ci=countries[c.countryCode];var pct=Math.round(c.count/cmax*100); %><div class="country-item"><span class="country-name"><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span><span style="display:flex;align-items:center;gap:.5rem"><strong><%= c.count %></strong><span class="per-country-track"><span style="width:<%= pct %>%"></span></span></span></div><% }); } else { %><div class="google-saved-empty">No real click country data yet.</div><% } %></div></div>
+    <div class="glass-card per-link-recent"><h3>🖱 Recent Real Clicks</h3><div class="per-link-click-table"><% if(linkClicks.length){ linkClicks.slice(0,50).forEach(function(c){if(c.isBot)return;var ci=countries[c.countryCode||'XX']; %><div class="per-click-row"><span><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span><span><%= c.device %> • <%= c.browser %></span><span><%= c.city || 'Unknown city' %></span><span class="link-date" data-date="<%= c.createdAt %>"><%= c.createdAt %></span></div><% }); } else { %><div class="google-saved-empty">No real clicks yet.</div><% } %></div></div>
+  </div>
+<% } %>
+
+<!-- ===== GOOGLE SHORTLINK PAGE ===== -->
         <% if (page === 'google-shortlink') { %>
           <div class="fade-in google-shortlink-page">
             <div class="brand-center">
