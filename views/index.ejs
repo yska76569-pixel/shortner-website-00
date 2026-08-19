@@ -2336,6 +2336,91 @@
             box-shadow:0 8px 20px rgba(66,133,244,.16);
         }
 
+
+        /* ===== V7.26 GOOGLE STYLE SUCCESS OUTPUT ===== */
+        .google-style-success{
+            margin-top:1rem;
+            padding:.9rem 1rem;
+            border-radius:16px;
+            display:flex;
+            align-items:center;
+            gap:.8rem;
+            background:linear-gradient(135deg,rgba(51,230,161,.10),rgba(39,215,255,.055));
+            border:1px solid rgba(51,230,161,.20);
+            box-shadow:0 12px 30px rgba(0,0,0,.12);
+        }
+        .google-style-success-icon{
+            width:42px;height:42px;flex:0 0 auto;border-radius:13px;
+            display:flex;align-items:center;justify-content:center;
+            background:rgba(51,230,161,.10);
+            border:1px solid rgba(51,230,161,.20);
+            color:#8CFFD1;
+            font-size:1.15rem;
+        }
+        .google-style-success-title{font-size:.92rem;font-weight:900;color:#F7FAFF}
+        .google-style-success-sub{margin-top:.12rem;font-size:.68rem;color:var(--text-muted)}
+        .google-style-main-output{
+            margin-top:.8rem!important;
+            display:flex!important;
+            justify-content:space-between!important;
+            gap:.8rem!important;
+            align-items:center!important;
+            flex-wrap:wrap!important;
+        }
+        .google-style-output-copy{flex:1;min-width:240px;display:flex;flex-direction:column;gap:.25rem}
+        .google-style-output-label{font-size:.56rem;letter-spacing:.12em;font-weight:900;color:#7EDFFF}
+        .google-style-output-copy code{word-break:break-all;color:#A8EDFF;font-size:.82rem}
+        .google-style-output-actions{display:flex;gap:.45rem;flex-wrap:wrap}
+        .google-style-details-grid{
+            margin-top:.8rem;
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:.65rem;
+        }
+        .google-style-detail{
+            padding:.7rem .8rem;
+            border-radius:13px;
+            background:rgba(255,255,255,.03);
+            border:1px solid rgba(255,255,255,.07);
+            min-width:0;
+        }
+        .google-style-detail span{
+            display:block;
+            font-size:.56rem;
+            letter-spacing:.08em;
+            text-transform:uppercase;
+            color:var(--text-muted);
+            margin-bottom:.18rem;
+        }
+        .google-style-detail strong{
+            display:block;
+            color:#F7FAFF;
+            font-size:.74rem;
+            word-break:break-all;
+        }
+        .google-style-detail-wide{grid-column:1/-1}
+        .google-style-success-note{
+            margin-top:.8rem;
+            padding:.65rem .75rem;
+            border-radius:12px;
+            display:flex;
+            gap:.45rem;
+            align-items:flex-start;
+            background:rgba(124,92,255,.045);
+            border:1px solid rgba(124,92,255,.11);
+            color:var(--text-muted);
+            font-size:.64rem;
+            line-height:1.5;
+        }
+        .google-style-success-note i{color:#FFE08A!important;margin-top:.12rem}
+        @media(max-width:700px){
+            .google-style-details-grid{grid-template-columns:1fr}
+            .google-style-detail-wide{grid-column:auto}
+            .google-style-main-output{align-items:stretch!important}
+            .google-style-output-actions{width:100%}
+            .google-style-output-actions .btn{flex:1;justify-content:center}
+        }
+
 </style>
 </head>
 <body>
@@ -3252,12 +3337,47 @@
               </div>
 
               <% if (typeof googleStyleUrl!=='undefined' && googleStyleUrl) { %>
-                <div class="google-result-box" style="margin-top:1rem;">
-                  <code id="googleStyleOutput"><%= googleStyleUrl %></code>
-                  <button type="button" class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('googleStyleOutput').textContent)">Copy</button>
+                <div class="google-style-success">
+                  <div class="google-style-success-icon"><i class="fas fa-circle-check"></i></div>
+                  <div>
+                    <div class="google-style-success-title">Link Created Successfully!</div>
+                    <div class="google-style-success-sub">Your Google Style Shortlink is ready to use.</div>
+                  </div>
                 </div>
-                <div style="margin-top:.55rem;color:var(--text-muted);font-size:.72rem;word-break:break-all;">
-                  Redirects to: <%= typeof googleStyleOriginal!=='undefined' ? googleStyleOriginal : '' %>
+
+                <div class="google-result-box google-style-main-output">
+                  <div class="google-style-output-copy">
+                    <span class="google-style-output-label">YOUR SHORT LINK</span>
+                    <code id="googleStyleOutput"><%= googleStyleUrl %></code>
+                  </div>
+                  <div class="google-style-output-actions">
+                    <button type="button" class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('googleStyleOutput').textContent)">
+                      <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <a class="btn btn-primary" href="<%= googleStyleUrl %>" target="_blank" rel="noopener">
+                      <i class="fas fa-arrow-up-right-from-square"></i> Open
+                    </a>
+                  </div>
+                </div>
+
+                <div class="google-style-details-grid">
+                  <div class="google-style-detail">
+                    <span>Domain</span>
+                    <strong><%= typeof googleStyleDomain!=='undefined' && googleStyleDomain ? googleStyleDomain : '-' %></strong>
+                  </div>
+                  <div class="google-style-detail">
+                    <span>Short Code</span>
+                    <strong><%= typeof googleStyleCode!=='undefined' && googleStyleCode ? googleStyleCode : '-' %></strong>
+                  </div>
+                  <div class="google-style-detail google-style-detail-wide">
+                    <span>Destination</span>
+                    <strong><%= typeof googleStyleOriginal!=='undefined' ? googleStyleOriginal : '' %></strong>
+                  </div>
+                </div>
+
+                <div class="google-style-success-note">
+                  <i class="fas fa-bolt"></i>
+                  <span>Ready for direct 302 redirect. Copy the short link above and use it anywhere.</span>
                 </div>
               <% } %>
             </div>
