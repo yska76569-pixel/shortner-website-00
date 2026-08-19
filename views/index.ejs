@@ -2421,6 +2421,17 @@
             .google-style-output-actions .btn{flex:1;justify-content:center}
         }
 
+
+.google-saved-section{margin-top:1.3rem!important}
+.google-saved-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.7rem}
+.google-saved-head h2{margin:0;font-size:1rem}.google-saved-head p{margin:.15rem 0 0;color:var(--text-muted);font-size:.66rem}
+.google-saved-head>span{color:#8fe8ff;font-size:.64rem;white-space:nowrap}
+.google-saved-card{padding:.85rem;margin-top:.65rem;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.075)}
+.google-saved-url{display:block;color:#8fe8ff;font-weight:900;font-size:.83rem;word-break:break-all}
+.google-saved-original{margin-top:.2rem;color:var(--text-muted);font-size:.65rem;word-break:break-all}
+.google-saved-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.65rem}
+.google-saved-empty{text-align:center;padding:1.3rem;color:var(--text-muted)}
+
 </style>
 </head>
 <body>
@@ -3275,7 +3286,7 @@
                                 <div style="min-width:0;flex:1;"><a class="link-url" href="<%= link.shortUrl %>" target="_blank" rel="noopener noreferrer"><%= link.shortUrl %></a><div class="link-original"><%= link.originalUrl %></div></div>
                                 <div class="my-link-quick-actions"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>"><i class="fas fa-copy"></i> Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')"><i class="fas fa-qrcode"></i> QR</button></div>
                             </div>
-                            <div class="link-meta"><span><i class="fas fa-arrow-pointer"></i> <%= link.clicks || 0 %> clicks</span><span><i class="fas fa-globe"></i> <%= link.selectedDomain %></span><% if(link.passwordEnabled){ %><span><i class="fas fa-lock"></i> Password</span><% } %><span class="badge <%= link.isActive ? 'badge-active' : 'badge-inactive' %>"><%= link.isActive ? 'Active' : 'Disabled' %></span></div>
+                            <div class="link-meta"><span><i class="fas fa-arrow-pointer"></i> <%= link.clicks || 0 %> clicks</span><span><i class="fas fa-globe"></i> <%= link.selectedDomain %></span><% if(link.linkType==='google_style'){ %><span class="badge badge-active"><i class="fab fa-google"></i> Google Style</span><% } %><% if(link.passwordEnabled){ %><span><i class="fas fa-lock"></i> Password</span><% } %><span class="badge <%= link.isActive ? 'badge-active' : 'badge-inactive' %>"><%= link.isActive ? 'Active' : 'Disabled' %></span></div>
                             <div class="link-actions">
                                 <form action="/links/<%= link.id %>/update" method="POST" class="edit-form"><input type="url" name="originalUrl" value="<%= link.originalUrl %>" required><button class="btn btn-sm btn-secondary" type="submit"><i class="fas fa-pen"></i> Update</button></form>
                                 <div class="btn-group"><form action="/links/<%= link.id %>/toggle" method="POST"><button class="btn btn-sm btn-secondary" type="submit"><%= link.isActive ? 'Disable' : 'Enable' %></button></form><form action="/links/<%= link.id %>/delete" method="POST" onsubmit="return confirm('Delete this short link?')"><button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash"></i> Delete</button></form></div>
@@ -3504,6 +3515,35 @@
                 <div class="glass-card" style="margin-bottom:2rem;"><h3 style="margin-bottom:.5rem;">👁️ Social Preview</h3><p style="color:var(--text-muted);font-size:.9rem;">Supported social crawlers see your short-domain title and a light description; normal visitors still redirect immediately.</p><div style="margin-top:1rem;background:#fff;color:#222;border-radius:14px;overflow:hidden;max-width:560px;box-shadow:var(--shadow);"><div style="height:130px;background:linear-gradient(135deg,#111827,#312e81);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2.3rem;">🔗</div><div style="padding:1rem;"><div style="font-size:.75rem;text-transform:uppercase;color:#777;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></div><strong style="display:block;margin:.25rem 0;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></strong><span style="font-size:.85rem;color:#666;">Fast, clean and secure short links powered by THIS PERSON IS BRAND.</span></div></div></div>
                 <h2 style="margin-bottom:1rem;">Recent Short Links</h2>
                 <% if (typeof links !== 'undefined' && links && links.length) { %><% links.forEach(function(link) { %><div class="link-card"><div class="link-top"><div><a class="link-url" href="<%= link.shortUrl %>" target="_blank">🔗 <%= link.shortUrl %></a><div class="link-original">→ <%= link.originalUrl %></div></div><div style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')">📱 QR</button></div></div><div class="link-meta"><span>👁️ <%= link.clicks || 0 %> clicks</span><span>🌐 <%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %></span><% if(link.passwordEnabled){ %><span>🔒 Password</span><% } %></div></div><% }); %><% } else { %><div class="glass-card" style="text-align:center;color:var(--text-muted);">No links yet. Create your first one above.</div><% } %>
+            
+            <div class="glass-card google-saved-section">
+              <div class="google-saved-head">
+                <div><h2>🔗 Saved Google Style Links</h2><p>Saved permanently in PostgreSQL and restored automatically after refresh.</p></div>
+                <span><%= (typeof googleStyleLinks!=='undefined' ? googleStyleLinks.length : 0) %> saved</span>
+              </div>
+              <% if(typeof googleStyleLinks!=='undefined' && googleStyleLinks.length){ %>
+                <% googleStyleLinks.forEach(function(link){ %>
+                  <div class="google-saved-card">
+                    <a class="google-saved-url" href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
+                    <div class="google-saved-original">→ <%= link.originalUrl %></div>
+                    <div class="link-meta">
+                      <span>🌐 <%= link.selectedDomain %></span>
+                      <span>👁️ <%= link.clicks || 0 %> clicks</span>
+                      <span>🆔 <%= link.shortCode %></span>
+                      <span class="badge <%= link.isActive?'badge-active':'badge-inactive' %>"><%= link.isActive?'Active':'Disabled' %></span>
+                    </div>
+                    <div class="google-saved-actions">
+                      <button type="button" class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button>
+                      <a class="btn btn-secondary btn-sm" href="<%= link.shortUrl %>" target="_blank" rel="noopener">↗ Open</a>
+                      <a class="btn btn-primary btn-sm" href="/my-links">📊 Manage & Track</a>
+                    </div>
+                  </div>
+                <% }); %>
+              <% } else { %>
+                <div class="google-saved-empty">No Google Style links created yet.</div>
+              <% } %>
+            </div>
+
             </div>
         <% } %>
 
