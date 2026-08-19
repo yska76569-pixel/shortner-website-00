@@ -2874,6 +2874,86 @@ textarea::placeholder{
   .per-link-primary-url{font-size:.76rem!important}
 }
 
+
+/* ===== V7.31 GLOBAL STATISTICS + ADMIN COUNTRY ANALYTICS ===== */
+.per-link-summary{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.dashboard-country-flag{width:26px!important;height:19px!important}
+
+.admin-analytics-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;
+}
+.admin-analytics-head h2{margin:0;font-size:1rem}
+.admin-analytics-head p{margin:.18rem 0 .8rem;color:var(--text-muted);font-size:.66rem}
+.admin-country-list{display:flex;flex-direction:column;gap:.45rem}
+.admin-country-row{
+  display:grid;grid-template-columns:34px minmax(150px,1fr) auto minmax(80px,120px);
+  align-items:center;gap:.55rem;padding:.55rem .6rem;border-radius:11px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)
+}
+.admin-user-country-row{
+  display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:.55rem;
+  padding:.55rem .6rem;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)
+}
+.admin-rank{color:#8094ba;font-size:.6rem;font-weight:900}
+.admin-country-value{color:#fff;font-size:.72rem;font-weight:900}
+.admin-country-bar{height:4px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.admin-country-bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:999px}
+.admin-user-country-main{display:flex;flex-direction:column;min-width:0}
+.admin-user-country-main strong{color:#fff;font-size:.7rem}
+.admin-user-country-main span{display:flex;align-items:center;gap:.35rem;color:var(--text-muted);font-size:.6rem}
+.admin-mini-flag{width:22px!important;height:16px!important}
+
+.admin-user-stat-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin-bottom:1rem
+}
+.admin-top-link-list{display:flex;flex-direction:column;gap:.45rem}
+.admin-top-link-row{
+  display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:.55rem;align-items:center;
+  padding:.58rem .6rem;border-radius:11px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)
+}
+.admin-top-link-row a{display:block;color:#8fe8ff;font-size:.66rem;font-weight:800;word-break:break-all}
+.admin-top-link-row small{display:block;color:var(--text-muted);font-size:.55rem;word-break:break-all;margin-top:.1rem}
+
+@media(max-width:980px){
+  .admin-analytics-grid{grid-template-columns:1fr}
+  .admin-user-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .per-link-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:600px){
+  .admin-country-row{grid-template-columns:28px minmax(0,1fr) auto}
+  .admin-country-bar{grid-column:2/-1;width:100%}
+  .admin-user-stat-grid{grid-template-columns:1fr}
+  .per-link-summary{grid-template-columns:1fr!important}
+}
+
+
+/* ===== V7.32 DEDICATED GOOGLE SAVED LINKS + ANALYTICS ===== */
+.google-dedicated-analytics{margin-top:1.35rem}
+.google-analytics-summary-card{margin-bottom:1rem}
+.google-analytics-summary{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem;margin-top:.85rem
+}
+.google-analytics-grid{
+  display:grid;grid-template-columns:1.35fr .85fr;gap:1rem;margin-bottom:1rem
+}
+.google-analytics-grid>.glass-card{margin:0!important}
+.google-own-link-card{overflow:hidden}
+.google-own-link-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem}
+.google-own-link-main{min-width:0;flex:1}
+.google-own-link-meta{margin-top:.55rem!important}
+.google-recent-clicks{margin-top:1rem!important}
+@media(max-width:1050px){
+  .google-analytics-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .google-analytics-grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .google-analytics-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .google-own-link-head{flex-direction:column}
+}
+@media(max-width:440px){
+  .google-analytics-summary{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -3520,11 +3600,18 @@ textarea::placeholder{
                                     <% countryStats.forEach(function(country) { 
                                         var percentage = Math.round((country.count / maxCount) * 100);
                                         var countryInfo = typeof countries !== 'undefined' && countries[country.countryCode] ? countries[country.countryCode] : null;
-                                        var flag = countryInfo ? countryInfo.flag : '🌍';
                                         var name = countryInfo ? countryInfo.name : (country.country || 'Unknown');
                                     %>
                                         <div class="country-item">
-                                            <span class="country-name"><span class="country-flag"><%= flag %></span> <%= name %></span>
+                                            <span class="country-name">
+                                                <% if((country.countryCode||'XX') !== 'XX'){ %>
+                                                  <img class="country-flag-img dashboard-country-flag" src="https://flagcdn.com/24x18/<%= String(country.countryCode).toLowerCase() %>.png" alt="<%= country.countryCode %> flag" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                                                  <span class="country-code-fallback" style="display:none;"><%= country.countryCode %></span>
+                                                <% } else { %>
+                                                  <span class="country-code-fallback">🌐</span>
+                                                <% } %>
+                                                <%= name %>
+                                            </span>
                                             <span style="display: flex; align-items: center; gap: 0.5rem;">
                                                 <span class="country-clicks"><%= country.count %></span>
                                                 <div style="width: 50px; height: 3px; background: var(--glass-border); border-radius: 4px; overflow: hidden;">
@@ -3600,6 +3687,7 @@ textarea::placeholder{
                                 <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
                                     <button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= linkUrl %>" style="flex-shrink: 0; cursor: pointer;">📋 Copy</button>
                                     <button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= linkCode %>','<%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %>')" style="flex-shrink: 0; cursor: pointer;">📱 QR</button>
+                                    <a class="btn btn-primary btn-sm" href="/links/<%= linkId %>/stats" style="flex-shrink:0;"><i class="fas fa-chart-line"></i> Statistics</a>
                                 </div>
                             </div>
                             <div class="link-meta">
@@ -3796,6 +3884,7 @@ textarea::placeholder{
       <div class="mini-summary-card"><span>Real Clicks</span><strong><%= totalLinkClicks %></strong></div>
       <div class="mini-summary-card"><span>Unique Visitors</span><strong><%= uniqueVisitors %></strong></div>
       <div class="mini-summary-card"><span>Countries</span><strong><%= countryStats.length %></strong></div>
+      <div class="mini-summary-card"><span>Bot / Preview Clicks</span><strong><%= typeof perLinkBotClicks!=='undefined' ? perLinkBotClicks : 0 %></strong></div>
     </div>
 
     <div class="glass-card per-link-chart-card">
@@ -4087,35 +4176,139 @@ textarea::placeholder{
                 <% if (typeof shortUrl !== 'undefined' && shortUrl) { var createdUrlParts = String(shortUrl).replace(/^https?:\/\//,'').split('/'); var createdDomain = createdUrlParts[0] || ''; var createdCode = createdUrlParts[1] || ''; %><div class="short-link-display" style="margin-bottom:2rem;"><div><div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem;">YOUR NEW SHORT LINK</div><span class="link"><%= shortUrl %></span></div><div style="display:flex;gap:.5rem;flex-wrap:wrap;"><button class="copy-btn" onclick="copyToClipboard('<%= shortUrl %>')">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= createdCode %>','<%= createdDomain %>')">📱 QR</button><a class="btn btn-secondary btn-sm" href="<%= shortUrl %>" target="_blank">↗ Test</a></div></div><% } %>
                 <div class="glass-card" style="margin-bottom:2rem;"><h3 style="margin-bottom:.5rem;">👁️ Social Preview</h3><p style="color:var(--text-muted);font-size:.9rem;">Supported social crawlers see your short-domain title and a light description; normal visitors still redirect immediately.</p><div style="margin-top:1rem;background:#fff;color:#222;border-radius:14px;overflow:hidden;max-width:560px;box-shadow:var(--shadow);"><div style="height:130px;background:linear-gradient(135deg,#111827,#312e81);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2.3rem;">🔗</div><div style="padding:1rem;"><div style="font-size:.75rem;text-transform:uppercase;color:#777;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></div><strong style="display:block;margin:.25rem 0;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></strong><span style="font-size:.85rem;color:#666;">Fast, clean and secure short links powered by THIS PERSON IS BRAND.</span></div></div></div>
                 <h2 style="margin-bottom:1rem;">Recent Short Links</h2>
-                <% if (typeof links !== 'undefined' && links && links.length) { %><% links.forEach(function(link) { %><div class="link-card"><div class="link-top"><div><a class="link-url" href="<%= link.shortUrl %>" target="_blank">🔗 <%= link.shortUrl %></a><div class="link-original">→ <%= link.originalUrl %></div></div><div style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')">📱 QR</button></div></div><div class="link-meta"><span>👁️ <%= link.clicks || 0 %> clicks</span><span>🌐 <%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %></span><% if(link.passwordEnabled){ %><span>🔒 Password</span><% } %></div></div><% }); %><% } else { %><div class="glass-card" style="text-align:center;color:var(--text-muted);">No links yet. Create your first one above.</div><% } %>
+                <% if (typeof links !== 'undefined' && links && links.length) { %><% links.forEach(function(link) { %><div class="link-card"><div class="link-top"><div><a class="link-url" href="<%= link.shortUrl %>" target="_blank">🔗 <%= link.shortUrl %></a><div class="link-original">→ <%= link.originalUrl %></div></div><div style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')">📱 QR</button><a class="btn btn-primary btn-sm" href="/links/<%= link.id %>/stats"><i class="fas fa-chart-line"></i> Statistics</a></div></div><div class="link-meta"><span>👁️ <%= link.clicks || 0 %> clicks</span><span>🌐 <%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %></span><% if(link.passwordEnabled){ %><span>🔒 Password</span><% } %></div></div><% }); %><% } else { %><div class="glass-card" style="text-align:center;color:var(--text-muted);">No links yet. Create your first one above.</div><% } %>
             
-            <div class="glass-card google-saved-section">
-              <div class="google-saved-head">
-                <div><h2>🔗 Saved Google Style Links</h2><p>Saved permanently in PostgreSQL and restored automatically after refresh.</p></div>
-                <span><%= (typeof googleStyleLinks!=='undefined' ? googleStyleLinks.length : 0) %> saved</span>
-              </div>
-              <% if(typeof googleStyleLinks!=='undefined' && googleStyleLinks.length){ %>
-                <% googleStyleLinks.forEach(function(link){ %>
-                  <div class="google-saved-card">
-                    <a class="google-saved-url" href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
-                    <div class="google-saved-original">→ <%= link.originalUrl %></div>
-                    <div class="link-meta">
-                      <span>🌐 <%= link.selectedDomain %></span>
-                      <span>👁️ <%= link.clicks || 0 %> clicks</span>
-                      <span>🆔 <%= link.shortCode %></span>
-                      <span class="badge <%= link.isActive?'badge-active':'badge-inactive' %>"><%= link.isActive?'Active':'Disabled' %></span>
-                    </div>
-                    <div class="google-saved-actions">
-                      <button type="button" class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button>
-                      <a class="btn btn-secondary btn-sm" href="<%= link.shortUrl %>" target="_blank" rel="noopener">↗ Open</a>
-                      <a class="btn btn-primary btn-sm" href="/my-links">📊 Manage & Track</a>
-                    </div>
-                  </div>
-                <% }); %>
-              <% } else { %>
-                <div class="google-saved-empty">No Google Style links created yet.</div>
-              <% } %>
+            
+<div class="google-dedicated-analytics">
+  <div class="glass-card google-analytics-summary-card">
+    <div class="google-saved-head">
+      <div>
+        <div class="dashboard-kicker">GOOGLE SHORTLINK ANALYTICS</div>
+        <h2><i class="fab fa-google"></i> Google Analytics</h2>
+        <p>Only your Google Style Shortlinks are counted here. This stays separate from normal-link analytics.</p>
+      </div>
+      <span>Premium Analytics</span>
+    </div>
+
+    <div class="google-analytics-summary">
+      <div class="mini-summary-card"><span>Google Links</span><strong><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.totalLinks : 0 %></strong></div>
+      <div class="mini-summary-card"><span>Real Clicks</span><strong><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.realClicks : 0 %></strong></div>
+      <div class="mini-summary-card"><span>Unique Visitors</span><strong><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.uniqueVisitors : 0 %></strong></div>
+      <div class="mini-summary-card"><span>Countries</span><strong><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.countries : 0 %></strong></div>
+      <div class="mini-summary-card"><span>Bot / Preview</span><strong><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.botClicks : 0 %></strong></div>
+    </div>
+  </div>
+
+  <div class="google-analytics-grid">
+    <div class="glass-card per-link-chart-card google-analytics-chart">
+      <div class="analytics-card-title">
+        <div><h3>📈 Google Click Graph — Last 14 Days</h3><p>Real clicks from Google Style Shortlinks only.</p></div>
+      </div>
+      <% if(typeof googleAnalytics!=='undefined'){ var gmx=Math.max(1,...googleAnalytics.chartDays.map(function(d){return d.clicks})); %>
+        <div class="per-link-bars">
+          <% googleAnalytics.chartDays.forEach(function(d){ %>
+            <div class="per-link-bar-col" title="<%= d.label %>: <%= d.clicks %> clicks">
+              <div class="per-link-bar-num"><%= d.clicks %></div>
+              <div class="per-link-bar-track"><div class="per-link-bar-fill" style="height:<%= Math.max(d.clicks?8:2,Math.round((d.clicks/gmx)*100)) %>%"></div></div>
+              <div class="per-link-bar-label"><%= d.label %></div>
             </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="glass-card google-country-analytics">
+      <div class="analytics-card-title">
+        <div><h3>🌍 Google Top Countries</h3><p>Top real-click countries for Google Style links.</p></div>
+      </div>
+      <div class="country-grid">
+        <% if(typeof googleAnalytics!=='undefined' && googleAnalytics.countryStats.length){ var gcmax=googleAnalytics.countryStats[0].count||1; googleAnalytics.countryStats.forEach(function(c){ var ci=countries[c.countryCode||'XX'] || countries['XX']; var pct=Math.round(c.count/gcmax*100); %>
+          <div class="country-item">
+            <span class="country-name">
+              <% if((c.countryCode||'XX')!=='XX'){ %>
+                <img class="country-flag-img" src="https://flagcdn.com/24x18/<%= String(c.countryCode).toLowerCase() %>.png" alt="<%= c.countryCode %> flag" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                <span class="country-code-fallback" style="display:none;"><%= c.countryCode %></span>
+              <% } else { %><span class="country-code-fallback">🌐</span><% } %>
+              <%= ci.name %>
+            </span>
+            <span class="country-count-wrap"><strong><%= c.count %></strong><span class="per-country-track"><span style="width:<%= pct %>%"></span></span></span>
+          </div>
+        <% }); } else { %><div class="google-saved-empty">No Google country traffic yet.</div><% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-card google-saved-section">
+    <div class="google-saved-head">
+      <div>
+        <h2>🔗 Your Saved Google Style Links</h2>
+        <p>Only Google Style links created by this user are saved here permanently in PostgreSQL.</p>
+      </div>
+      <span><%= (typeof googleStyleLinks!=='undefined' ? googleStyleLinks.length : 0) %> saved</span>
+    </div>
+
+    <% if(typeof googleStyleLinks!=='undefined' && googleStyleLinks.length){ %>
+      <% googleStyleLinks.forEach(function(link){ %>
+        <div class="google-saved-card google-own-link-card">
+          <div class="google-own-link-head">
+            <div class="google-own-link-main">
+              <div class="google-style-output-label">GOOGLE STYLE SHORT LINK</div>
+              <a class="google-saved-url" href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
+              <div class="google-saved-original">→ <%= link.originalUrl %></div>
+            </div>
+            <div class="per-link-badges">
+              <span class="badge badge-active"><i class="fab fa-google"></i> Google Style</span>
+              <span class="badge <%= link.isActive?'badge-active':'badge-inactive' %>"><%= link.isActive?'Active':'Disabled' %></span>
+            </div>
+          </div>
+
+          <div class="link-meta google-own-link-meta">
+            <span>🌐 <%= link.selectedDomain %></span>
+            <span>👁️ <%= link.clicks || 0 %> clicks</span>
+            <span>🆔 <%= link.shortCode %></span>
+            <span>📅 <span class="link-date" data-date="<%= link.createdAt %>"><%= link.createdAt %></span></span>
+          </div>
+
+          <div class="google-saved-actions">
+            <button type="button" class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>"><i class="fas fa-copy"></i> Copy</button>
+            <a class="btn btn-secondary btn-sm" href="<%= link.shortUrl %>" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
+            <button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')"><i class="fas fa-qrcode"></i> QR</button>
+            <a class="btn btn-primary btn-sm" href="/links/<%= link.id %>/stats"><i class="fas fa-chart-line"></i> Statistics</a>
+          </div>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <div class="google-saved-empty">No Google Style links created yet.</div>
+    <% } %>
+  </div>
+
+  <div class="glass-card per-link-recent google-recent-clicks">
+    <div class="analytics-card-title recent-title">
+      <div><h3>🖱 Latest Google Real Clicks</h3><p>Latest real visitor activity from Google Style links only.</p></div>
+      <span class="recent-count-badge"><%= typeof googleAnalytics!=='undefined' ? googleAnalytics.recentClicks.length : 0 %> latest</span>
+    </div>
+
+    <% if(typeof googleAnalytics!=='undefined' && googleAnalytics.recentClicks.length){ %>
+      <div class="per-link-click-table">
+        <div class="per-click-head"><span>Country</span><span>Device / Browser</span><span>Location</span><span>Date & Time</span></div>
+        <% googleAnalytics.recentClicks.forEach(function(c){ var ci=countries[c.countryCode||'XX'] || countries['XX']; %>
+          <div class="per-click-row">
+            <div class="click-cell click-country" data-label="Country">
+              <span class="country-flag-wrap">
+                <% if((c.countryCode||'XX')!=='XX'){ %><img class="country-flag-img recent-flag" src="https://flagcdn.com/24x18/<%= String(c.countryCode).toLowerCase() %>.png" alt="<%= c.countryCode %> flag" loading="lazy"><% } else { %><span class="country-code-fallback">🌐</span><% } %>
+              </span>
+              <div><strong><%= ci.name %></strong><small><%= c.countryCode||'XX' %></small></div>
+            </div>
+            <div class="click-cell" data-label="Device / Browser"><strong><%= c.device||'Unknown' %></strong><small><%= c.browser||'Unknown' %> • <%= c.os||'Unknown' %></small></div>
+            <div class="click-cell" data-label="Location"><strong><%= c.city||'Unknown city' %></strong><small><%= c.region||'Unknown region' %></small></div>
+            <div class="click-cell" data-label="Date & Time"><strong class="link-date" data-date="<%= c.createdAt %>"><%= c.createdAt %></strong><small>Google real click</small></div>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %><div class="google-saved-empty">No Google real clicks yet.</div><% } %>
+  </div>
+</div>
+
 
             </div>
         <% } %>
@@ -4356,7 +4549,86 @@ textarea::placeholder{
         <% } %>
 
         <!-- ===== ADMIN PANEL ===== -->
-        <% if (page === 'admin') { %>
+        
+        <% if (page === 'admin-user-stats') { %>
+          <div class="fade-in admin-user-stats-page">
+            <div class="my-links-header stats-page-head">
+              <div>
+                <div class="dashboard-kicker">ADMIN USER ANALYTICS</div>
+                <h1><i class="fas fa-user-chart"></i> <%= targetUser.displayName || targetUser.username %> — Statistics</h1>
+                <p>@<%= targetUser.username %> · <%= targetUser.isPremium?'Premium':'Free' %> · User ID <%= targetUser.id %></p>
+              </div>
+              <a href="/admin" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Admin Panel</a>
+            </div>
+
+            <div class="admin-user-stat-grid">
+              <div class="mini-summary-card"><span>Total Links</span><strong><%= targetLinks.length %></strong></div>
+              <div class="mini-summary-card"><span>Real Clicks</span><strong><%= targetRealClicks %></strong></div>
+              <div class="mini-summary-card"><span>Unique Visitors</span><strong><%= targetUniqueVisitors %></strong></div>
+              <div class="mini-summary-card"><span>Bot / Preview</span><strong><%= targetBotClicks %></strong></div>
+            </div>
+
+            <div class="glass-card per-link-chart-card">
+              <div class="analytics-card-title"><div><h3>📈 User Click Graph — Last 14 Days</h3><p>Real clicks generated by this user across all links.</p></div></div>
+              <div class="per-link-bars"><% var umx=Math.max(1,...targetChartDays.map(function(d){return d.clicks})); targetChartDays.forEach(function(d){ %><div class="per-link-bar-col" title="<%= d.label %>: <%= d.clicks %> clicks"><div class="per-link-bar-num"><%= d.clicks %></div><div class="per-link-bar-track"><div class="per-link-bar-fill" style="height:<%= Math.max(d.clicks?8:2,Math.round((d.clicks/umx)*100)) %>%"></div></div><div class="per-link-bar-label"><%= d.label %></div></div><% }); %></div>
+            </div>
+
+            <div class="admin-analytics-grid">
+              <div class="glass-card admin-country-panel">
+                <div class="admin-analytics-head"><div><h2>🌍 Top 10 Countries</h2><p>Real clicks for this user.</p></div></div>
+                <div class="admin-country-list">
+                  <% if(targetTopCountries.length){ targetTopCountries.forEach(function(c,i){ var ci=countries[c.country_code||'XX'] || countries['XX']; %>
+                    <div class="admin-user-country-row">
+                      <span class="admin-rank">#<%= i+1 %></span>
+                      <span class="country-name">
+                        <% if((c.country_code||'XX')!=='XX'){ %><img class="country-flag-img" src="https://flagcdn.com/24x18/<%= String(c.country_code).toLowerCase() %>.png" alt="<%= c.country_code %> flag" loading="lazy"><% } else { %><span class="country-code-fallback">🌐</span><% } %>
+                        <strong><%= ci.name %></strong>
+                      </span>
+                      <strong class="admin-country-value"><%= Number(c.count||0).toLocaleString() %></strong>
+                    </div>
+                  <% }); } else { %><div class="google-saved-empty">No country data yet.</div><% } %>
+                </div>
+              </div>
+
+              <div class="glass-card admin-country-panel">
+                <div class="admin-analytics-head"><div><h2>🔗 Top 10 Links</h2><p>Best-performing links for this user.</p></div></div>
+                <div class="admin-top-link-list">
+                  <% if(targetTopLinks.length){ targetTopLinks.forEach(function(l,i){ %>
+                    <div class="admin-top-link-row">
+                      <span class="admin-rank">#<%= i+1 %></span>
+                      <div><a href="<%= l.shortUrl %>" target="_blank" rel="noopener"><%= l.shortUrl %></a><small><%= l.originalUrl %></small></div>
+                      <span><strong><%= l.realClicks %></strong> real<br><small><%= l.botClicks %> bot</small></span>
+                    </div>
+                  <% }); } else { %><div class="google-saved-empty">No links yet.</div><% } %>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card per-link-recent">
+              <div class="analytics-card-title"><div><h3>🖱 Latest Real Clicks</h3><p>Latest 50 real visits for this user.</p></div></div>
+              <% if(targetRecentClicks.length){ %>
+                <div class="per-link-click-table">
+                  <div class="per-click-head"><span>Country</span><span>Device / Browser</span><span>Location</span><span>Date & Time</span></div>
+                  <% targetRecentClicks.forEach(function(c){ var ci=countries[c.countryCode||'XX'] || countries['XX']; %>
+                    <div class="per-click-row">
+                      <div class="click-cell click-country" data-label="Country">
+                        <span class="country-flag-wrap">
+                          <% if((c.countryCode||'XX')!=='XX'){ %><img class="country-flag-img recent-flag" src="https://flagcdn.com/24x18/<%= String(c.countryCode).toLowerCase() %>.png" alt="<%= c.countryCode %> flag" loading="lazy"><% } else { %><span class="country-code-fallback">🌐</span><% } %>
+                        </span>
+                        <div><strong><%= ci.name %></strong><small><%= c.countryCode||'XX' %></small></div>
+                      </div>
+                      <div class="click-cell" data-label="Device / Browser"><strong><%= c.device||'Unknown' %></strong><small><%= c.browser||'Unknown' %> • <%= c.os||'Unknown' %></small></div>
+                      <div class="click-cell" data-label="Location"><strong><%= c.city||'Unknown city' %></strong><small><%= c.region||'Unknown region' %></small></div>
+                      <div class="click-cell" data-label="Date & Time"><strong class="link-date" data-date="<%= c.createdAt %>"><%= c.createdAt %></strong><small>Real click</small></div>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } else { %><div class="google-saved-empty">No real clicks yet.</div><% } %>
+            </div>
+          </div>
+        <% } %>
+
+<% if (page === 'admin') { %>
             <div class="admin-page-heading">
                 <div>
                     <div class="admin-eyebrow">PLATFORM MANAGEMENT</div>
@@ -4373,9 +4645,57 @@ textarea::placeholder{
                 <div class="stat-card"><div class="number"><%= adminStats.pendingPayments %></div><div class="label">Pending Payments</div></div>
             </div>
 
+
+            <div class="admin-analytics-grid">
+              <div class="glass-card admin-country-panel">
+                <div class="admin-analytics-head">
+                  <div><h2>🌍 Top 10 Countries</h2><p>Highest real-click traffic across the whole platform.</p></div>
+                </div>
+                <div class="admin-country-list">
+                  <% if(typeof adminTopCountries!=='undefined' && adminTopCountries.length){ var acMax=Number(adminTopCountries[0].count||1); adminTopCountries.forEach(function(c,i){ var ci=countries[c.country_code||'XX'] || countries['XX']; var pct=Math.round(Number(c.count||0)/acMax*100); %>
+                    <div class="admin-country-row">
+                      <span class="admin-rank">#<%= i+1 %></span>
+                      <span class="country-name">
+                        <% if((c.country_code||'XX')!=='XX'){ %>
+                          <img class="country-flag-img" src="https://flagcdn.com/24x18/<%= String(c.country_code).toLowerCase() %>.png" alt="<%= c.country_code %> flag" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+                          <span class="country-code-fallback" style="display:none;"><%= c.country_code %></span>
+                        <% } else { %><span class="country-code-fallback">🌐</span><% } %>
+                        <strong><%= ci.name %></strong>
+                      </span>
+                      <span class="admin-country-value"><%= Number(c.count||0).toLocaleString() %></span>
+                      <span class="admin-country-bar"><span style="width:<%= pct %>%"></span></span>
+                    </div>
+                  <% }); } else { %><div class="google-saved-empty">No real country traffic yet.</div><% } %>
+                </div>
+              </div>
+
+              <div class="glass-card admin-country-panel">
+                <div class="admin-analytics-head">
+                  <div><h2>🏆 Top User + Country Traffic</h2><p>Top 10 user/country combinations by real clicks.</p></div>
+                </div>
+                <div class="admin-country-list">
+                  <% if(typeof adminTopUserCountries!=='undefined' && adminTopUserCountries.length){ adminTopUserCountries.forEach(function(r,i){ var ci=countries[r.country_code||'XX'] || countries['XX']; %>
+                    <div class="admin-user-country-row">
+                      <span class="admin-rank">#<%= i+1 %></span>
+                      <div class="admin-user-country-main">
+                        <strong><%= r.display_name || r.username || ('User '+r.user_id) %></strong>
+                        <span>
+                          <% if((r.country_code||'XX')!=='XX'){ %>
+                            <img class="country-flag-img admin-mini-flag" src="https://flagcdn.com/24x18/<%= String(r.country_code).toLowerCase() %>.png" alt="<%= r.country_code %> flag" loading="lazy" onerror="this.style.display='none';">
+                          <% } %>
+                          <%= ci.name %>
+                        </span>
+                      </div>
+                      <strong class="admin-country-value"><%= Number(r.count||0).toLocaleString() %></strong>
+                    </div>
+                  <% }); } else { %><div class="google-saved-empty">No user country traffic yet.</div><% } %>
+                </div>
+              </div>
+            </div>
+
             <div class="glass-card" style="margin-bottom:1.5rem;">
                 <h2 style="margin-bottom:1rem;">Users</h2>
-                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Telegram</th><th>Email</th><th>Plan</th><th>Status</th><th>API</th><th>Links</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>
+                <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Telegram</th><th>Email</th><th>Plan</th><th>Status</th><th>API</th><th>Links</th><th>Real Clicks</th><th>Bot</th><th>Unique</th><th>Actions</th></tr></thead><tbody>
                 <% adminUsers.forEach(function(u){ %><tr>
                     <td><%= u.id %></td><td><strong><%= u.displayName || u.username %></strong><br>@<%= u.username %></td><td><%= u.telegramId %></td><td><%= u.email || '-' %></td>
                     <td><span class="status-pill <%= u.isPremium?'ok':'warn' %>"><%= u.isPremium?'Premium':'Free' %></span><% if(u.premiumUntil){ %><br><small><%= new Date(u.premiumUntil).toLocaleDateString() %></small><% } %></td>
@@ -4390,8 +4710,9 @@ textarea::placeholder{
                         <% } %>
                         <% if(u.apiKeyPrefix){ %><br><small><%= u.apiKeyPrefix %>•••</small><% } %>
                     </td>
-                    <td><%= u.totalLinks %></td><td><%= u.totalClicks %></td>
+                    <td><%= u.totalLinks %></td><td><%= u.realClicks || 0 %></td><td><%= u.botClicks || 0 %></td><td><%= u.uniqueVisitors || 0 %></td>
                     <td><div class="admin-actions">
+                        <a class="btn btn-sm btn-primary" href="/admin/users/<%= u.id %>/stats"><i class="fas fa-chart-line"></i> Stats</a>
                         <form action="/admin/users/<%= u.id %>/block" method="POST"><button class="btn btn-sm <%= u.accountStatus==='blocked'?'btn-secondary':'btn-danger' %>"><%= u.accountStatus==='blocked'?'Unblock':'Block' %></button></form>
                         <form action="/admin/users/<%= u.id %>/api-toggle" method="POST"><button class="btn btn-sm <%= u.apiAdminEnabled ? 'btn-warning' : 'btn-primary' %>"><i class="fas <%= u.apiAdminEnabled ? 'fa-toggle-off' : 'fa-toggle-on' %>"></i> <%= u.apiAdminEnabled ? 'API Admin OFF' : 'API Admin ON' %></button></form>
                         <form action="/admin/users/<%= u.id %>/plan" method="POST"><select name="months"><option value="0">Free</option><option value="1">+1 Month</option><option value="3">+3 Months</option><option value="6">+6 Months</option><option value="12">+12 Months</option></select><button class="btn btn-sm btn-primary">Set</button></form>
