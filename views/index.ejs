@@ -2441,6 +2441,125 @@
 .per-click-row{display:grid;grid-template-columns:1.1fr 1fr 1fr 1.2fr;gap:.7rem;padding:.65rem .25rem;border-bottom:1px solid rgba(255,255,255,.06);font-size:.65rem;color:var(--text-muted)}
 @media(max-width:760px){.per-click-row{grid-template-columns:1fr 1fr}.per-link-bars{height:220px}.per-link-bar-track{height:150px}}
 
+
+/* ===== V7.29 POWERFUL PER-LINK STATS ===== */
+.per-link-stats-page{width:100%;max-width:100%;min-width:0}
+.stats-page-head{gap:1rem}
+.per-link-identity-compact{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:.8rem 1rem;
+  align-items:start;
+  padding:1rem!important;
+  overflow:hidden;
+}
+.per-link-id-main{min-width:0}
+.per-link-id-topline{display:flex;justify-content:space-between;gap:.7rem;align-items:center;flex-wrap:wrap}
+.per-link-badges{display:flex;gap:.35rem;flex-wrap:wrap}
+.per-link-primary-url{
+  display:block;color:#8fe8ff!important;font-size:.92rem!important;font-weight:900!important;
+  margin:.25rem 0!important;word-break:break-all;line-height:1.35
+}
+.per-link-destination{font-size:.66rem!important;line-height:1.4;word-break:break-all}
+.per-link-destination span{color:#9bb0d2;font-weight:800}
+.per-link-mini-meta{margin-top:.45rem!important;display:flex;gap:.45rem!important;flex-wrap:wrap!important}
+.per-link-control-zone{
+  display:flex;justify-content:flex-end;align-items:center;gap:.4rem;flex-wrap:wrap;
+  max-width:440px
+}
+.per-link-control-zone form{margin:0}
+.stats-update-form{
+  grid-column:1/-1;display:flex;align-items:flex-end;gap:.6rem;padding-top:.75rem;
+  margin-top:.1rem;border-top:1px solid rgba(255,255,255,.07)
+}
+.stats-update-field{flex:1;min-width:0}
+.stats-update-field label{display:block;color:var(--text-muted);font-size:.6rem;font-weight:800;margin-bottom:.3rem}
+.stats-update-field input{
+  width:100%;min-width:0;padding:.68rem .75rem;border-radius:11px;
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:var(--text-main)
+}
+.analytics-card-title{display:flex;justify-content:space-between;align-items:center;gap:.8rem;margin-bottom:.85rem}
+.analytics-card-title h3{margin:0!important}
+.analytics-card-title p{margin:.15rem 0 0;color:var(--text-muted);font-size:.63rem}
+.recent-count-badge{
+  padding:.35rem .55rem;border-radius:999px;background:rgba(39,215,255,.07);
+  border:1px solid rgba(39,215,255,.14);color:#8fe8ff;font-size:.58rem;font-weight:900;white-space:nowrap
+}
+.country-count-wrap{display:flex;align-items:center;gap:.5rem;min-width:110px;justify-content:flex-end}
+.per-link-click-table{width:100%;min-width:0}
+.per-click-head{
+  display:grid;grid-template-columns:1.05fr 1.25fr 1fr 1.15fr;gap:.7rem;
+  padding:.55rem .65rem;border-radius:10px;background:rgba(255,255,255,.035);
+  color:#9fb2d7;font-size:.56rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em
+}
+.per-click-row{
+  display:grid!important;grid-template-columns:1.05fr 1.25fr 1fr 1.15fr!important;
+  gap:.7rem!important;padding:.72rem .65rem!important;border-bottom:1px solid rgba(255,255,255,.06)!important;
+  color:var(--text-muted)!important;align-items:center
+}
+.click-cell{min-width:0;display:flex;flex-direction:column;gap:.12rem}
+.click-cell strong{font-size:.66rem;color:#e9f1ff;font-weight:800;word-break:break-word}
+.click-cell small{font-size:.56rem;color:#8194b8;word-break:break-word}
+.click-country{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:.45rem}
+.click-country .country-flag{font-size:1.05rem}
+.per-link-chart-card,.per-link-country-card,.per-link-recent{overflow:hidden}
+
+@media(max-width:900px){
+  .per-link-identity-compact{grid-template-columns:1fr}
+  .per-link-control-zone{justify-content:flex-start;max-width:none}
+  .per-click-head,.per-click-row{grid-template-columns:1fr 1fr!important}
+}
+
+@media(max-width:760px){
+  .per-link-stats-page{padding:0!important}
+  .stats-page-head{align-items:flex-start}
+  .per-link-identity-compact{padding:.8rem!important;border-radius:16px}
+  .per-link-primary-url{font-size:.78rem!important}
+  .per-link-control-zone{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  .per-link-control-zone .btn{width:100%;justify-content:center;min-width:0;padding:.58rem .35rem}
+  .per-link-control-zone form{width:100%}
+  .stats-update-form{flex-direction:column;align-items:stretch}
+  .stats-update-form .btn{width:100%;justify-content:center}
+  .per-link-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.45rem!important}
+  .per-link-summary .mini-summary-card{min-width:0!important;padding:.7rem .45rem!important}
+  .per-link-summary .mini-summary-card strong{font-size:1.25rem!important;word-break:break-all}
+  .per-link-summary .mini-summary-card span{font-size:.53rem!important}
+  .per-link-bars{height:220px!important;gap:.35rem!important;padding:.5rem 0!important}
+  .per-link-bar-col{min-width:38px!important}
+  .per-link-bar-track{height:145px!important}
+  .country-grid{grid-template-columns:1fr!important}
+  .per-click-head{display:none!important}
+  .per-click-row{
+    display:grid!important;grid-template-columns:1fr!important;gap:.6rem!important;
+    padding:.8rem!important;margin-bottom:.55rem;border:1px solid rgba(255,255,255,.075)!important;
+    border-radius:13px;background:rgba(255,255,255,.025)
+  }
+  .click-cell{
+    display:grid;grid-template-columns:110px minmax(0,1fr);column-gap:.55rem;align-items:start;
+    padding:.2rem 0
+  }
+  .click-cell:before{
+    content:attr(data-label);font-size:.54rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#7890ba
+  }
+  .click-cell strong,.click-cell small{grid-column:2}
+  .click-country{grid-template-columns:110px auto minmax(0,1fr)}
+  .click-country:before{grid-column:1}
+  .click-country .country-flag{grid-column:2;grid-row:1/3}
+  .click-country>div{grid-column:3}
+  .analytics-card-title{align-items:flex-start}
+}
+
+@media(max-width:480px){
+  .per-link-control-zone{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .per-link-summary{grid-template-columns:1fr!important}
+  .per-link-summary .mini-summary-card{display:flex;justify-content:space-between;align-items:center}
+  .per-link-bars{overflow-x:auto!important}
+  .per-link-bar-col{min-width:42px!important;flex:0 0 42px!important}
+  .click-cell{grid-template-columns:92px minmax(0,1fr)}
+  .click-country{grid-template-columns:92px auto minmax(0,1fr)}
+  .google-style-output-label{font-size:.5rem!important}
+}
+
 </style>
 </head>
 <body>
@@ -3311,16 +3430,117 @@
         
         <% if (page === 'link-stats') { %>
   <div class="fade-in per-link-stats-page">
-    <div class="my-links-header"><div><div class="dashboard-kicker">LINK ANALYTICS</div><h1><i class="fas fa-chart-line"></i> Link Statistics</h1><p>Statistics for this short link only.</p></div><a href="/my-links" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> My Links</a></div>
-    <div class="glass-card per-link-identity">
-      <div class="google-style-output-label">SHORT LINK</div><a href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
-      <div class="link-original">→ <%= link.originalUrl %></div>
-      <div class="link-meta"><span>🌐 <%= link.selectedDomain %></span><span>🆔 <%= link.shortCode %></span><% if(link.linkType==='google_style'){ %><span class="badge badge-active">Google Style</span><% } %></div>
+    <div class="my-links-header stats-page-head">
+      <div>
+        <div class="dashboard-kicker">LINK ANALYTICS</div>
+        <h1><i class="fas fa-chart-line"></i> Link Statistics</h1>
+        <p>Live analytics and controls for this short link only.</p>
+      </div>
+      <a href="/my-links" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> My Links</a>
     </div>
-    <div class="my-links-summary per-link-summary"><div class="mini-summary-card"><span>Real Clicks</span><strong><%= totalLinkClicks %></strong></div><div class="mini-summary-card"><span>Unique Visitors</span><strong><%= uniqueVisitors %></strong></div><div class="mini-summary-card"><span>Countries</span><strong><%= countryStats.length %></strong></div></div>
-    <div class="glass-card per-link-chart-card"><h3>📈 Click Graph — Last 14 Days</h3><div class="per-link-bars"><% var mx=Math.max(1,...chartDays.map(function(d){return d.clicks})); chartDays.forEach(function(d){ %><div class="per-link-bar-col" title="<%= d.label %>: <%= d.clicks %> clicks"><div class="per-link-bar-num"><%= d.clicks %></div><div class="per-link-bar-track"><div class="per-link-bar-fill" style="height:<%= Math.max(d.clicks?8:2,Math.round((d.clicks/mx)*100)) %>%"></div></div><div class="per-link-bar-label"><%= d.label %></div></div><% }); %></div></div>
-    <div class="glass-card per-link-country-card"><h3>🌍 Real Country Breakdown</h3><div class="country-grid"><% if(countryStats.length){ var cmax=countryStats[0].count||1; countryStats.forEach(function(c){var ci=countries[c.countryCode];var pct=Math.round(c.count/cmax*100); %><div class="country-item"><span class="country-name"><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span><span style="display:flex;align-items:center;gap:.5rem"><strong><%= c.count %></strong><span class="per-country-track"><span style="width:<%= pct %>%"></span></span></span></div><% }); } else { %><div class="google-saved-empty">No real click country data yet.</div><% } %></div></div>
-    <div class="glass-card per-link-recent"><h3>🖱 Recent Real Clicks</h3><div class="per-link-click-table"><% if(linkClicks.length){ linkClicks.slice(0,50).forEach(function(c){if(c.isBot)return;var ci=countries[c.countryCode||'XX']; %><div class="per-click-row"><span><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span><span><%= c.device %> • <%= c.browser %></span><span><%= c.city || 'Unknown city' %></span><span class="link-date" data-date="<%= c.createdAt %>"><%= c.createdAt %></span></div><% }); } else { %><div class="google-saved-empty">No real clicks yet.</div><% } %></div></div>
+
+    <div class="glass-card per-link-identity per-link-identity-compact">
+      <div class="per-link-id-main">
+        <div class="per-link-id-topline">
+          <span class="google-style-output-label">SHORT LINK</span>
+          <div class="per-link-badges">
+            <% if(link.linkType==='google_style'){ %><span class="badge badge-active"><i class="fab fa-google"></i> Google Style</span><% } %>
+            <span class="badge <%= link.isActive ? 'badge-active' : 'badge-inactive' %>"><%= link.isActive ? 'Active' : 'Disabled' %></span>
+          </div>
+        </div>
+        <a class="per-link-primary-url" href="<%= link.shortUrl %>" target="_blank" rel="noopener"><%= link.shortUrl %></a>
+        <div class="link-original per-link-destination"><span>Destination:</span> <%= link.originalUrl %></div>
+        <div class="link-meta per-link-mini-meta">
+          <span><i class="fas fa-globe"></i> <%= link.selectedDomain %></span>
+          <span><i class="fas fa-key"></i> <%= link.shortCode %></span>
+          <% if(link.passwordEnabled){ %><span><i class="fas fa-lock"></i> Password Protected</span><% } %>
+        </div>
+      </div>
+
+      <div class="per-link-control-zone">
+        <button type="button" class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>"><i class="fas fa-copy"></i> Copy</button>
+        <a href="<%= link.shortUrl %>" target="_blank" rel="noopener" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-up-right-from-square"></i> Open</a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')"><i class="fas fa-qrcode"></i> QR</button>
+        <form action="/links/<%= link.id %>/toggle" method="POST">
+          <button class="btn btn-sm btn-secondary" type="submit"><i class="fas <%= link.isActive ? 'fa-pause' : 'fa-play' %>"></i> <%= link.isActive ? 'Disable' : 'Enable' %></button>
+        </form>
+        <form action="/links/<%= link.id %>/delete" method="POST" onsubmit="return confirm('Delete this short link?')">
+          <button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash"></i> Delete</button>
+        </form>
+      </div>
+
+      <form action="/links/<%= link.id %>/update" method="POST" class="stats-update-form">
+        <div class="stats-update-field">
+          <label><i class="fas fa-pen"></i> Update Destination URL</label>
+          <input type="url" name="originalUrl" value="<%= link.originalUrl %>" required>
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-floppy-disk"></i> Update Link</button>
+      </form>
+    </div>
+
+    <div class="my-links-summary per-link-summary">
+      <div class="mini-summary-card"><span>Real Clicks</span><strong><%= totalLinkClicks %></strong></div>
+      <div class="mini-summary-card"><span>Unique Visitors</span><strong><%= uniqueVisitors %></strong></div>
+      <div class="mini-summary-card"><span>Countries</span><strong><%= countryStats.length %></strong></div>
+    </div>
+
+    <div class="glass-card per-link-chart-card">
+      <div class="analytics-card-title"><div><h3>📈 Click Graph — Last 14 Days</h3><p>Daily real-click activity for this link.</p></div></div>
+      <div class="per-link-bars"><% var mx=Math.max(1,...chartDays.map(function(d){return d.clicks})); chartDays.forEach(function(d){ %><div class="per-link-bar-col" title="<%= d.label %>: <%= d.clicks %> clicks"><div class="per-link-bar-num"><%= d.clicks %></div><div class="per-link-bar-track"><div class="per-link-bar-fill" style="height:<%= Math.max(d.clicks?8:2,Math.round((d.clicks/mx)*100)) %>%"></div></div><div class="per-link-bar-label"><%= d.label %></div></div><% }); %></div>
+    </div>
+
+    <div class="glass-card per-link-country-card">
+      <div class="analytics-card-title"><div><h3>🌍 Real Country Breakdown</h3><p>Country distribution for real clicks only.</p></div></div>
+      <div class="country-grid">
+        <% if(countryStats.length){ var cmax=countryStats[0].count||1; countryStats.forEach(function(c){var ci=countries[c.countryCode] || countries['XX'];var pct=Math.round(c.count/cmax*100); %>
+          <div class="country-item">
+            <span class="country-name"><span class="country-flag"><%= ci.flag %></span> <%= ci.name %></span>
+            <span class="country-count-wrap"><strong><%= c.count %></strong><span class="per-country-track"><span style="width:<%= pct %>%"></span></span></span>
+          </div>
+        <% }); } else { %><div class="google-saved-empty">No real click country data yet.</div><% } %>
+      </div>
+    </div>
+
+    <div class="glass-card per-link-recent">
+      <div class="analytics-card-title recent-title">
+        <div><h3>🖱 Recent Real Clicks</h3><p>Latest real visitor activity with device, browser and location details.</p></div>
+        <span class="recent-count-badge"><%= Math.min(50,linkClicks.length) %> latest</span>
+      </div>
+
+      <% if(linkClicks.length){ %>
+        <div class="per-link-click-table">
+          <div class="per-click-head">
+            <span>Country</span>
+            <span>Device / Browser</span>
+            <span>Location</span>
+            <span>Date & Time</span>
+          </div>
+
+          <% linkClicks.slice(0,50).forEach(function(c){if(c.isBot)return;var ci=countries[c.countryCode||'XX'] || countries['XX']; %>
+            <div class="per-click-row">
+              <div class="click-cell click-country" data-label="Country">
+                <span class="country-flag"><%= ci.flag %></span>
+                <div><strong><%= ci.name %></strong><small><%= c.countryCode || 'XX' %></small></div>
+              </div>
+              <div class="click-cell" data-label="Device / Browser">
+                <strong><i class="fas <%= String(c.device||'').toLowerCase().includes('mobile') ? 'fa-mobile-screen' : 'fa-desktop' %>"></i> <%= c.device || 'Unknown device' %></strong>
+                <small><%= c.browser || 'Unknown browser' %> • <%= c.os || 'Unknown OS' %></small>
+              </div>
+              <div class="click-cell" data-label="Location">
+                <strong><i class="fas fa-location-dot"></i> <%= c.city || 'Unknown city' %></strong>
+                <small><%= c.region || 'Unknown region' %></small>
+              </div>
+              <div class="click-cell" data-label="Date & Time">
+                <strong class="link-date" data-date="<%= c.createdAt %>"><%= c.createdAt %></strong>
+                <small>Real click</small>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="google-saved-empty">No real clicks yet.</div>
+      <% } %>
+    </div>
   </div>
 <% } %>
 
