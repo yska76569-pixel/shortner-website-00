@@ -1050,6 +1050,37 @@ app.get('/my-links',authMiddleware,async(req,res)=>{
 });
 
 
+// ===== PER-LINK ANALYTICS =====
+app.get('/links/:id/stats',authMiddleware,async(req,res)=>{
+  try{
+    const freshUser=await getUserById(req.user.id);
+    const linkR=await pool.query('SELECT * FROM links WHERE id=$1 AND user_id=$2 LIMIT 1',[req.params.id,req.user.id]);
+    if(!linkR.rowCount) return res.redirect('/my-links?error='+encodeURIComponent('Link not found.'));
+    const link=mapLink(linkR.rows[0]);
+    link.shortUrl=link.linkType==='google_style'?buildGoogleStyleShortUrl(link):buildShortUrl(link);
+    const clickR=await pool.query('SELECT * FROM clicks WHERE link_id=$1 ORDER BY created_at DESC',[link.id]);
+    const clicks=clickR.rows.map(mapClick);
+    const realClicks=clicks.filter(c=>!c.isBot);
+    const uniqueVisitors=new Set(realClicks.map(c=>c.ipAddress).filter(Boolean)).size;
+    const countryMap={};
+    for(const c of realClicks){
+      const cc=String(c.countryCode||'XX').toUpperCase();
+      if(!countryMap[cc]) countryMap[cc]={countryCode:cc,country:c.country||countryInfo(cc).name,count:0};
+      countryMap[cc].count++;
+    }
+    const countryStats=Object.values(countryMap).sort((a,b)=>b.count-a.count);
+    const today=new Date();today.setHours(0,0,0,0);
+    const chartDays=[];
+    for(let i=13;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;chartDays.push({key,label:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}),clicks:0});}
+    const dayMap=new Map(chartDays.map((d,i)=>[d.key,i]));
+    for(const c of realClicks){const d=new Date(c.createdAt);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if(dayMap.has(key))chartDays[dayMap.get(key)].clicks++;}
+    const active=await getActiveOnlineUsers();
+    res.render('index',{page:'link-stats',user:freshUser,link,linkClicks:realClicks,totalLinkClicks:realClicks.length,uniqueVisitors,countryStats,chartDays,countries,
+      onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),error:null,success:null,info:null,shortUrl:null,
+      customDomains:[],availableDomains:[],domainChoices:[],baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)});
+  }catch(e){console.error('Per-link stats error:',e);res.redirect('/my-links?error='+encodeURIComponent('Could not load link statistics.'));}
+});
+
 // ===== GOOGLE SHORTLINK TOOL =====
 // Google officially generates share.google/search.app short IDs inside the Google app.
 // There is no documented server API in this project for minting those Google-owned IDs.
@@ -1058,6 +1089,7 @@ app.get('/my-links',authMiddleware,async(req,res)=>{
 app.get('/google-shortlink',authMiddleware,async(req,res)=>{
   try{
     const freshUser=await getUserById(req.user.id),active=await getActiveOnlineUsers();
+    if(!freshUser.isPremium) return res.redirect('/plans?error='+encodeURIComponent('Google Shortlink is available to Premium users only.'));
     const allChoices=await getDomainChoices();
     const domainChoices=getDomainChoicesForUser(freshUser,allChoices);
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
@@ -1072,6 +1104,7 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
 app.post('/google-shortlink/convert',authMiddleware,async(req,res)=>{
   try{
     const freshUser=await getUserById(req.user.id),active=await getActiveOnlineUsers();
+    if(!freshUser.isPremium) return res.redirect('/plans?error='+encodeURIComponent('Google Shortlink is available to Premium users only.'));
     const allChoices=await getDomainChoices();
     const domainChoices=getDomainChoicesForUser(freshUser,allChoices);
     const availableDomains=domainChoices.filter(d=>d.selectable).map(d=>d.domain);
@@ -1116,14 +1149,8 @@ app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
     const freshUser=mapUser(userR.rows[0]);
 
     if(!freshUser.isPremium){
-      if(!FREE_PLAN_DOMAINS.has(requestedDomain)){
-        await client.query('ROLLBACK');
-        return res.redirect('/plans?error='+encodeURIComponent('This domain is Premium-only. Free users can use only .world and .shop domains.'));
-      }
-      if(Number(freshUser.lifetimeLinksCreated||0) >= FREE_LINK_LIMIT){
-        await client.query('ROLLBACK');
-        return res.redirect('/plans?error='+encodeURIComponent(`Free lifetime limit reached (${FREE_LINK_LIMIT}/${FREE_LINK_LIMIT}). Deleting links does not restore quota.`));
-      }
+      await client.query('ROLLBACK');
+      return res.redirect('/plans?error='+encodeURIComponent('Google Shortlink is available to Premium users only.'));
     }
 
     let shortCode=customSlug;
@@ -1159,7 +1186,7 @@ app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
     );
 
     await client.query(
-      'UPDATE users SET total_links=total_links+1,lifetime_links_created=lifetime_links_created+1 WHERE id=$1',
+      'UPDATE users SET total_links=total_links+1 WHERE id=$1',
       [freshUser.id]
     );
 
