@@ -2271,6 +2271,57 @@
         .google-domain-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:.8rem}
         @media(max-width:700px){.google-domain-grid{grid-template-columns:1fr}.google-result-box{align-items:stretch;flex-direction:column}}
 
+
+        /* ===== V7.24 LIVE STAT NUMBER AUTO-FIT ===== */
+        #publicLiveStats .stat-card{
+            min-width:0!important;
+            overflow:hidden!important;
+            padding:1rem .65rem!important;
+        }
+
+        #publicLiveStats .stat-card .number{
+            width:100%!important;
+            max-width:100%!important;
+            display:block!important;
+            text-align:center!important;
+            white-space:nowrap!important;
+            overflow:hidden!important;
+            text-overflow:clip!important;
+            line-height:1.05!important;
+            font-size:clamp(1.45rem,2.35vw,2.65rem)!important;
+            letter-spacing:-.035em!important;
+            font-variant-numeric:tabular-nums!important;
+        }
+
+        #publicLiveStats .stat-card .label{
+            width:100%!important;
+            text-align:center!important;
+            line-height:1.25!important;
+            overflow-wrap:anywhere!important;
+        }
+
+        @media(max-width:1200px){
+            #publicLiveStats{
+                grid-template-columns:repeat(3,minmax(0,1fr))!important;
+            }
+        }
+
+        @media(max-width:760px){
+            #publicLiveStats{
+                grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            }
+
+            #publicLiveStats .stat-card .number{
+                font-size:clamp(1.35rem,8vw,2.15rem)!important;
+            }
+        }
+
+        @media(max-width:420px){
+            #publicLiveStats{
+                grid-template-columns:1fr!important;
+            }
+        }
+
 </style>
 </head>
 <body>
@@ -4643,6 +4694,41 @@
       setInterval(refreshPublicLiveStats,10000);
     });
     </script>
+
+
+<script>
+(function(){
+  function fitLiveStatNumbers(){
+    document.querySelectorAll('#publicLiveStats .stat-card .number').forEach(function(el){
+      el.style.removeProperty('font-size');
+      var max=42, min=16;
+      var size=Math.min(max, parseFloat(getComputedStyle(el).fontSize)||36);
+      el.style.fontSize=size+'px';
+
+      var guard=0;
+      while(el.scrollWidth>el.clientWidth && size>min && guard<60){
+        size-=1;
+        el.style.fontSize=size+'px';
+        guard++;
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    fitLiveStatNumbers();
+    window.addEventListener('resize',fitLiveStatNumbers);
+
+    var target=document.getElementById('publicLiveStats');
+    if(target && 'MutationObserver' in window){
+      new MutationObserver(fitLiveStatNumbers).observe(target,{
+        subtree:true,
+        childList:true,
+        characterData:true
+      });
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
