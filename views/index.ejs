@@ -2322,6 +2322,20 @@
             }
         }
 
+
+        /* ===== V7.25 GOOGLE STYLE SHORTLINK ===== */
+        .google-style-card{
+            border-color:rgba(66,133,244,.22)!important;
+            background:
+              linear-gradient(135deg,rgba(66,133,244,.055),rgba(52,168,83,.035),rgba(251,188,5,.025),rgba(234,67,53,.025)),
+              var(--glass-bg)!important;
+        }
+        .google-style-card .google-step>span{
+            background:linear-gradient(135deg,#4285f4,#34a853,#fbbc05,#ea4335)!important;
+            color:#fff!important;
+            box-shadow:0 8px 20px rgba(66,133,244,.16);
+        }
+
 </style>
 </head>
 <body>
@@ -3197,6 +3211,55 @@
               <div class="google-tool-icon">G</div>
               <h1>Google Shortlink</h1>
               <p>Use a real Google-generated <code>share.google</code> / <code>search.app</code> link, then shorten it again on your own domain.</p>
+            </div>
+
+
+            <div class="glass-card google-style-card" style="margin-bottom:1.3rem;">
+              <div class="google-step"><span>★</span><div><strong>Google Style Shortlink</strong><small>Create a working <code>/share.google?q=...</code> link on your own domain.</small></div></div>
+
+              <form method="POST" action="/google-shortlink/create-style">
+                <div class="form-group">
+                  <label>Destination URL</label>
+                  <input class="form-control" type="url" name="originalUrl" required placeholder="https://example.com/your-long-url">
+                </div>
+
+                <div class="google-domain-grid">
+                  <div class="form-group">
+                    <label>Short Domain</label>
+                    <select class="form-control" name="domain" required>
+                      <% (domainChoices||[]).forEach(function(d){ %>
+                        <option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>>
+                          <%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance':' — Unavailable')) %>
+                        </option>
+                      <% }); %>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Custom Code (optional)</label>
+                    <input class="form-control" name="customSlug" placeholder="Auto generated">
+                  </div>
+                </div>
+
+                <button class="btn btn-primary google-convert-btn">
+                  <i class="fas fa-link"></i> Create Google Style Shortlink
+                </button>
+              </form>
+
+              <div class="google-api-note">
+                <i class="fas fa-circle-info"></i>
+                <span>This creates a real redirect on <strong>your own domain</strong>, for example <code>https://yourdomain.com/share.google?q=ABC123</code>. It does <strong>not</strong> create a Google-owned <code>google.com</code> token.</span>
+              </div>
+
+              <% if (typeof googleStyleUrl!=='undefined' && googleStyleUrl) { %>
+                <div class="google-result-box" style="margin-top:1rem;">
+                  <code id="googleStyleOutput"><%= googleStyleUrl %></code>
+                  <button type="button" class="btn btn-secondary" onclick="copyToClipboard(document.getElementById('googleStyleOutput').textContent)">Copy</button>
+                </div>
+                <div style="margin-top:.55rem;color:var(--text-muted);font-size:.72rem;word-break:break-all;">
+                  Redirects to: <%= typeof googleStyleOriginal!=='undefined' ? googleStyleOriginal : '' %>
+                </div>
+              <% } %>
             </div>
 
             <div class="glass-card google-convert-card">
