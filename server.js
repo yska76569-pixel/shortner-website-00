@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-session-secret';
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
-const FREE_LINK_LIMIT = Math.max(1, Number(process.env.FREE_LINK_LIMIT || 10));
+const FREE_LINK_LIMIT = 3;
 const PLAN_1_PRICE = Math.max(1, Number(process.env.PLAN_1_PRICE || 100));
 const PLAN_3_PRICE = Math.max(1, Number(process.env.PLAN_3_PRICE || 250));
 const PLAN_1_USD = Number(process.env.PLAN_1_USD || 0.81);
@@ -63,12 +63,11 @@ const CUSTOM_DOMAINS = [
   .filter((d, i, arr) => d && d !== BASE_HOST && arr.indexOf(d) === i);
 const AVAILABLE_DOMAINS = [BASE_HOST, ...CUSTOM_DOMAINS];
 
-const FREE_PLAN_DOMAINS = new Set(
-  String(process.env.FREE_PLAN_DOMAINS || 'thispersonisbrandshortner.world,thispersonisbrandshortner.shop')
-    .split(',')
-    .map(d => String(d).trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase())
-    .filter(Boolean)
-);
+// Free plan is intentionally locked to one domain only.
+// Premium users can use every enabled domain.
+const FREE_PLAN_DOMAINS = new Set([
+  'thispersonisbrandshortner.world'
+]);
 
 const PREVIEW_DESCRIPTION = process.env.PREVIEW_DESCRIPTION || 'Fast, clean and secure short links powered by THIS PERSON IS BRAND.';
 
@@ -1321,7 +1320,7 @@ app.post('/shorten',authMiddleware,async(req,res)=>{
     if(!freshUser.isPremium){
       if(!FREE_PLAN_DOMAINS.has(requestedDomain)){
         await client.query('ROLLBACK');
-        return res.redirect('/plans?error='+encodeURIComponent('This domain is Premium-only. Free users can use only .world and .shop domains.'));
+        return res.redirect('/plans?error='+encodeURIComponent('This domain is Premium-only. Free users can use only the .world domain.'));
       }
       if(Number(freshUser.lifetimeLinksCreated||0) >= FREE_LINK_LIMIT){
         await client.query('ROLLBACK');
