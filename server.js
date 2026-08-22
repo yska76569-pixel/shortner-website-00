@@ -662,7 +662,11 @@ async function getEnabledDomains(){
   return list.length ? list : [normalizeHost(BASE_HOST)];
 }
 async function getDomainChoices(){
-  const q=await pool.query('SELECT domain,enabled,maintenance,last_health FROM domain_settings ORDER BY domain=$1 DESC,domain ASC',[normalizeHost(BASE_HOST)]);
+  const xyzDomain='thispersonisbrandshortner.xyz';
+  const q=await pool.query(
+    'SELECT domain,enabled,maintenance,last_health FROM domain_settings ORDER BY CASE WHEN LOWER(domain)=LOWER($1) THEN 0 ELSE 1 END, domain ASC',
+    [xyzDomain]
+  );
   const configured=new Set(AVAILABLE_DOMAINS.map(normalizeHost));
   return q.rows.filter(r=>configured.has(normalizeHost(r.domain))).map(r=>({
     domain:normalizeHost(r.domain),enabled:!!r.enabled,maintenance:!!r.maintenance,lastHealth:r.last_health||'unknown',
