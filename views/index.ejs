@@ -2282,6 +2282,7 @@
         #publicLiveStats .stat-card .number{
             width:100%!important;
             max-width:100%!important;
+            min-width:0!important;
             display:block!important;
             text-align:center!important;
             white-space:nowrap!important;
@@ -2291,6 +2292,7 @@
             font-size:clamp(1.45rem,2.35vw,2.65rem)!important;
             letter-spacing:-.035em!important;
             font-variant-numeric:tabular-nums!important;
+            box-sizing:border-box!important;
         }
 
         #publicLiveStats .stat-card .label{
@@ -5815,33 +5817,69 @@ textarea::placeholder{
 
 <script>
 (function(){
-  function fitLiveStatNumbers(){
-    document.querySelectorAll('#publicLiveStats .stat-card .number').forEach(function(el){
-      el.style.removeProperty('font-size');
-      var max=42, min=16;
-      var size=Math.min(max, parseFloat(getComputedStyle(el).fontSize)||36);
-      el.style.fontSize=size+'px';
+  function fitOneLiveNumber(el){
+    if(!el || !el.parentElement) return;
 
-      var guard=0;
-      while(el.scrollWidth>el.clientWidth && size>min && guard<60){
-        size-=1;
-        el.style.fontSize=size+'px';
+    // Important: the stylesheet uses !important for font-size,
+    // so JS must also set the inline value with !important.
+    var card = el.parentElement;
+    var available = Math.max(40, card.clientWidth - 18);
+    var maxSize = window.innerWidth <= 760 ? 34 : 42;
+    var minSize = 11;
+
+    el.style.setProperty('font-size', maxSize + 'px', 'important');
+    el.style.setProperty('letter-spacing', '-0.035em', 'important');
+    el.style.setProperty('white-space', 'nowrap', 'important');
+    el.style.setProperty('max-width', '100%', 'important');
+
+    var size = maxSize;
+    var guard = 0;
+
+    // Shrink until the complete formatted number fits in the card.
+    while(el.scrollWidth > available && size > minSize && guard < 80){
+      size -= 1;
+      el.style.setProperty('font-size', size + 'px', 'important');
+      guard++;
+    }
+
+    // Very large future values: tighten spacing slightly before allowing overflow.
+    if(el.scrollWidth > available){
+      el.style.setProperty('letter-spacing', '-0.075em', 'important');
+      guard = 0;
+      while(el.scrollWidth > available && size > 9 && guard < 30){
+        size -= 0.5;
+        el.style.setProperty('font-size', size + 'px', 'important');
         guard++;
       }
+    }
+  }
+
+  function fitLiveStatNumbers(){
+    document.querySelectorAll('#publicLiveStats .stat-card .number').forEach(fitOneLiveNumber);
+  }
+
+  function scheduleFit(){
+    window.requestAnimationFrame(function(){
+      fitLiveStatNumbers();
+      setTimeout(fitLiveStatNumbers, 60);
     });
   }
 
   document.addEventListener('DOMContentLoaded',function(){
-    fitLiveStatNumbers();
-    window.addEventListener('resize',fitLiveStatNumbers);
+    scheduleFit();
+    window.addEventListener('resize',scheduleFit);
 
     var target=document.getElementById('publicLiveStats');
     if(target && 'MutationObserver' in window){
-      new MutationObserver(fitLiveStatNumbers).observe(target,{
+      new MutationObserver(scheduleFit).observe(target,{
         subtree:true,
         childList:true,
         characterData:true
       });
+    }
+
+    if(target && 'ResizeObserver' in window){
+      new ResizeObserver(scheduleFit).observe(target);
     }
   });
 })();
