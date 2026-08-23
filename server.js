@@ -2029,15 +2029,50 @@ app.post('/admin/site-maintenance/settings',adminMiddleware,async(req,res)=>{
   try{
     const message=String(req.body.maintenanceMessage||'').trim().slice(0,500);
     const eta=String(req.body.maintenanceEta||'').trim().slice(0,160);
-    const localUntil=String(req.body.maintenanceUntil||'').trim();
+
+    const resumeMode=String(req.body.resumeMode||'manual').trim();
+    const resumePreset=String(req.body.resumePreset||'').trim();
+    const customMinutes=Math.max(0,Number(req.body.customMinutes||0));
+    const exactLocal=String(req.body.maintenanceUntil||'').trim();
     const offsetMinutes=Number(req.body.timezoneOffset||0);
 
     let untilIso='';
 
-    if(localUntil){
-      const m=localUntil.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    // Preferred timezone-safe mode: NOW + duration.
+    if(resumeMode==='duration'){
+      let minutes=0;
+
+      const presetMap={
+        '30m':30,
+        '1h':60,
+        '2h':120,
+        '6h':360,
+        '12h':720,
+        '24h':1440
+      };
+
+      if(resumePreset==='custom'){
+        minutes=Math.floor(customMinutes);
+      }else{
+        minutes=presetMap[resumePreset]||0;
+      }
+
+      if(minutes<1 || minutes>10080){
+        return res.redirect('/admin?error='+encodeURIComponent('Choose a valid auto-resume duration between 1 minute and 7 days.'));
+      }
+
+      untilIso=new Date(Date.now() + minutes*60000).toISOString();
+    }
+
+    // Optional exact local date/time mode.
+    if(resumeMode==='exact'){
+      if(!exactLocal){
+        return res.redirect('/admin?error='+encodeURIComponent('Choose an exact auto-resume date/time.'));
+      }
+
+      const m=exactLocal.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
       if(!m){
-        return res.redirect('/admin?error='+encodeURIComponent('Invalid auto-resume date/time.'));
+        return res.redirect('/admin?error='+encodeURIComponent('Invalid exact auto-resume date/time.'));
       }
 
       const localAsUtc=Date.UTC(
@@ -2052,6 +2087,11 @@ app.post('/admin/site-maintenance/settings',adminMiddleware,async(req,res)=>{
       }
 
       untilIso=new Date(utcMs).toISOString();
+    }
+
+    // Manual mode deliberately stores a blank timer.
+    if(resumeMode==='manual'){
+      untilIso='';
     }
 
     const rows=[
@@ -2072,14 +2112,15 @@ app.post('/admin/site-maintenance/settings',adminMiddleware,async(req,res)=>{
 
     await auditAdmin(
       req,'maintenance_details','site','global',
-      `message=${message?'set':'blank'};eta=${eta?'set':'blank'};auto_resume=${untilIso||'manual'}`
+      `message=${message?'set':'blank'};eta=${eta?'set':'blank'};resume_mode=${resumeMode};auto_resume=${untilIso||'manual'}`
     );
 
-    res.redirect('/admin?success='+encodeURIComponent(
-      untilIso
-        ? 'Maintenance settings saved with automatic resume time.'
-        : 'Maintenance settings saved. Auto resume is not enabled.'
-    ));
+    let ok='Maintenance settings saved.';
+    if(resumeMode==='duration') ok+=' Auto resume will use the selected time-left duration.';
+    else if(resumeMode==='exact') ok+=' Auto resume will use the exact selected date/time.';
+    else ok+=' Maintenance will require manual OFF.';
+
+    res.redirect('/admin?success='+encodeURIComponent(ok));
   }catch(e){
     console.error('Maintenance details save error:',e);
     res.redirect('/admin?error='+encodeURIComponent('Could not save maintenance details'));
