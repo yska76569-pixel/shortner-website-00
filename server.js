@@ -306,6 +306,7 @@ async function initDatabase() {
     ON CONFLICT(setting_key) DO NOTHING;
     INSERT INTO site_settings(setting_key,setting_value) VALUES('maintenance_message','') ON CONFLICT(setting_key) DO NOTHING;
     INSERT INTO site_settings(setting_key,setting_value) VALUES('maintenance_eta','') ON CONFLICT(setting_key) DO NOTHING;
+    INSERT INTO site_settings(setting_key,setting_value) VALUES('maintenance_until','') ON CONFLICT(setting_key) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS notifications (
       id BIGSERIAL PRIMARY KEY,
@@ -376,10 +377,25 @@ async function initDatabase() {
 let maintenanceCache={value:false,at:0};
 async function isSiteMaintenanceOn(force=false){
   const now=Date.now();
-  if(!force && now-maintenanceCache.at<2000) return maintenanceCache.value;
+  if(!force && now-maintenanceCache.at<1500) return maintenanceCache.value;
   try{
-    const q=await pool.query("SELECT setting_value FROM site_settings WHERE setting_key='maintenance_mode' LIMIT 1");
-    const value=!!q.rowCount && String(q.rows[0].setting_value||'').toLowerCase()==='on';
+    const q=await pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_mode','maintenance_until')");
+    const settings={maintenance_mode:'off',maintenance_until:''};
+    q.rows.forEach(r=>{settings[r.setting_key]=String(r.setting_value||'');});
+    let value=String(settings.maintenance_mode||'').toLowerCase()==='on';
+    const untilRaw=String(settings.maintenance_until||'').trim();
+    if(value && untilRaw){
+      const untilMs=Date.parse(untilRaw);
+      if(Number.isFinite(untilMs) && untilMs<=now){
+        await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
+          VALUES('maintenance_mode','off',NOW(),'auto-resume')
+          ON CONFLICT(setting_key) DO UPDATE SET setting_value='off',updated_at=NOW(),updated_by='auto-resume'`);
+        await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
+          VALUES('maintenance_until','',NOW(),'auto-resume')
+          ON CONFLICT(setting_key) DO UPDATE SET setting_value='',updated_at=NOW(),updated_by='auto-resume'`);
+        value=false;
+      }
+    }
     maintenanceCache={value,at:now};
     return value;
   }catch(e){
@@ -389,26 +405,29 @@ async function isSiteMaintenanceOn(force=false){
 }
 async function getMaintenancePublicDetails(){
   try{
-    const q=await pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta')");
-    const data={message:'',eta:''};
+    const q=await pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta','maintenance_until')");
+    const data={message:'',eta:'',until:''};
     q.rows.forEach(r=>{
       if(r.setting_key==='maintenance_message') data.message=String(r.setting_value||'').trim();
       if(r.setting_key==='maintenance_eta') data.eta=String(r.setting_value||'').trim();
+      if(r.setting_key==='maintenance_until') data.until=String(r.setting_value||'').trim();
     });
     return data;
   }catch(e){
     console.error('Maintenance details read error:',e.message);
-    return {message:'',eta:''};
+    return {message:'',eta:'',until:''};
   }
 }
 function maintenanceHtml(meta={}){
   const esc=(s)=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
   const message=esc(meta.message||'');
   const eta=esc(meta.eta||'');
+  const untilRaw=String(meta.until||'').trim();
   const optionalMessage=message?`<div class="note"><strong>Update</strong><span>${message}</span></div>`:'';
   const optionalEta=eta?`<div class="eta"><span>⏱ Expected restore</span><strong>${eta}</strong></div>`:'';
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="15"><title>Website Under Maintenance</title><style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:Inter,Arial,sans-serif;color:#eef4ff;background:radial-gradient(circle at 20% 20%,rgba(108,99,255,.22),transparent 32%),radial-gradient(circle at 80% 80%,rgba(39,215,255,.12),transparent 34%),#070d1f}.card{width:min(660px,100%);padding:34px 26px;border-radius:26px;text-align:center;background:rgba(18,28,58,.92);border:1px solid rgba(140,160,255,.22);box-shadow:0 30px 90px rgba(0,0,0,.48)}.icon{font-size:52px}.brand{margin:12px 0 4px;font-weight:900;letter-spacing:.02em;color:#9fe9ff}.card h1{font-size:clamp(28px,6vw,46px);margin:10px 0}.card p{color:#aebbd5;line-height:1.7;margin:10px auto;max-width:540px}.pill{display:inline-flex;gap:8px;align-items:center;margin-top:16px;padding:9px 14px;border-radius:999px;color:#ffe59a;background:rgba(255,205,80,.08);border:1px solid rgba(255,205,80,.18);font-weight:800;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#ffd45c;box-shadow:0 0 14px #ffd45c;animation:p 1.3s infinite}@keyframes p{50%{opacity:.35}}.eta,.note{margin:16px auto 0;max-width:520px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}.eta span,.note strong{color:#9fe9ff}.eta strong{color:#fff}.note span{color:#d8e2f7}.contact{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);color:#93a3c2}.contact a{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:9px 14px;border-radius:999px;text-decoration:none;color:#fff;background:#168bd2;font-weight:800}.contact a:hover{filter:brightness(1.08)}small{display:block;margin-top:18px;color:#7181a3}</style></head><body><main class="card"><div class="icon">🛠️</div><div class="brand">THIS PERSON IS BRAND SHORTLINK</div><h1>Website Under Maintenance</h1><p>We are currently performing maintenance and improvements. The website, API and all short links are temporarily paused. Nothing has been deleted.</p>${optionalMessage}${optionalEta}<div class="pill"><span class="dot"></span> Maintenance in progress</div><div class="contact">Need an update?<br><a href="https://t.me/thispersonisbrand537" target="_blank" rel="noopener noreferrer">✈ Message Admin @thispersonisbrand537</a></div><small>This page checks again automatically every 15 seconds.</small></main></body></html>`;
+  const countdownBox=untilRaw?`<div class="countdown-wrap"><span class="countdown-label">AUTO RESUME IN</span><div id="maintenanceCountdown" class="countdown">Calculating...</div><small id="maintenanceResumeAt"></small></div>`:'';
+  const countdownScript=untilRaw?`<script>(function(){var raw=${JSON.stringify(untilRaw)};var target=Date.parse(raw);var c=document.getElementById('maintenanceCountdown');var at=document.getElementById('maintenanceResumeAt');function p(n){return String(n).padStart(2,'0')}function render(){if(!Number.isFinite(target)){if(c)c.textContent='Scheduled';return;}var left=target-Date.now();if(at){try{at.textContent='Scheduled: '+new Date(target).toLocaleString()}catch(_){}}if(left<=0){if(c)c.textContent='00:00:00';setTimeout(function(){location.reload()},700);return;}var t=Math.floor(left/1000),d=Math.floor(t/86400),h=Math.floor((t%86400)/3600),m=Math.floor((t%3600)/60),s=t%60;if(c)c.textContent=(d>0?d+'d ':'')+p(h)+':'+p(m)+':'+p(s)}render();setInterval(render,1000)})();<\/script>`:'';
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="15"><title>Website Under Maintenance</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:Inter,Arial,sans-serif;color:#eef4ff;background:radial-gradient(circle at 20% 20%,rgba(108,99,255,.22),transparent 32%),radial-gradient(circle at 80% 80%,rgba(39,215,255,.12),transparent 34%),#070d1f}.card{width:min(680px,100%);padding:34px 26px;border-radius:26px;text-align:center;background:rgba(18,28,58,.92);border:1px solid rgba(140,160,255,.22);box-shadow:0 30px 90px rgba(0,0,0,.48)}.icon{font-size:52px}.brand{margin:12px 0 4px;font-weight:900;letter-spacing:.02em;color:#9fe9ff}.card h1{font-size:clamp(28px,6vw,46px);margin:10px 0}.card p{color:#aebbd5;line-height:1.7;margin:10px auto;max-width:540px}.pill{display:inline-flex;gap:8px;align-items:center;margin-top:16px;padding:9px 14px;border-radius:999px;color:#ffe59a;background:rgba(255,205,80,.08);border:1px solid rgba(255,205,80,.18);font-weight:800;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#ffd45c;box-shadow:0 0 14px #ffd45c;animation:p 1.3s infinite}@keyframes p{50%{opacity:.35}}.eta,.note{margin:16px auto 0;max-width:520px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}.eta span,.note strong{color:#9fe9ff}.eta strong{color:#fff}.note span{color:#d8e2f7}.countdown-wrap{margin:18px auto 0;max-width:520px;padding:17px;border-radius:18px;background:linear-gradient(135deg,rgba(108,99,255,.13),rgba(39,215,255,.07));border:1px solid rgba(120,150,255,.18)}.countdown-label{display:block;font-size:11px;font-weight:900;letter-spacing:.18em;color:#9fe9ff}.countdown{margin:7px 0 4px;font-size:clamp(28px,8vw,48px);font-weight:950;letter-spacing:.02em;color:#fff;font-variant-numeric:tabular-nums}.countdown-wrap small{margin:0;color:#8ea0c2}.contact{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);color:#93a3c2}.contact a{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:9px 14px;border-radius:999px;text-decoration:none;color:#fff;background:#168bd2;font-weight:800}.contact a:hover{filter:brightness(1.08)}small{display:block;margin-top:18px;color:#7181a3}</style></head><body><main class="card"><div class="icon">🛠️</div><div class="brand">THIS PERSON IS BRAND SHORTLINK</div><h1>Website Under Maintenance</h1><p>We are currently performing maintenance and improvements. The website, API and all short links are temporarily paused. Nothing has been deleted.</p>${optionalMessage}${optionalEta}${countdownBox}<div class="pill"><span class="dot"></span> Maintenance in progress</div><div class="contact">Need an update?<br><a href="https://t.me/thispersonisbrand537" target="_blank" rel="noopener noreferrer">✈ Message Admin @thispersonisbrand537</a></div><small>This page checks again automatically every 15 seconds.</small></main>${countdownScript}</body></html>`;
 }
 
 function toIso(v) { return v ? new Date(v).toISOString() : null; }
@@ -1907,26 +1926,31 @@ app.post('/admin/site-maintenance/settings',adminMiddleware,async(req,res)=>{
   try{
     const message=String(req.body.maintenanceMessage||'').trim().slice(0,500);
     const eta=String(req.body.maintenanceEta||'').trim().slice(0,160);
-    await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
-      VALUES('maintenance_message',$1,NOW(),$2)
-      ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,
-      [message,ADMIN_EMAIL||'admin']);
-    await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
-      VALUES('maintenance_eta',$1,NOW(),$2)
-      ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,
-      [eta,ADMIN_EMAIL||'admin']);
-    await auditAdmin(req,'maintenance_details','site','global',`message=${message?'set':'blank'};eta=${eta?'set':'blank'}`);
-    res.redirect('/admin?success='+encodeURIComponent('Maintenance page details saved.'));
-  }catch(e){
-    console.error('Maintenance details save error:',e);
-    res.redirect('/admin?error='+encodeURIComponent('Could not save maintenance details'));
-  }
+    const localUntil=String(req.body.maintenanceUntil||'').trim();
+    const offsetMinutes=Number(req.body.timezoneOffset||0);
+    let untilIso='';
+    if(localUntil){
+      const m=localUntil.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if(!m) return res.redirect('/admin?error='+encodeURIComponent('Invalid auto-resume date/time.'));
+      const localAsUtc=Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0));
+      const trueUtcMs=localAsUtc+(Number.isFinite(offsetMinutes)?offsetMinutes:0)*60000;
+      if(trueUtcMs<=Date.now()+5000) return res.redirect('/admin?error='+encodeURIComponent('Auto-resume time must be in the future.'));
+      untilIso=new Date(trueUtcMs).toISOString();
+    }
+    for(const [key,value] of [['maintenance_message',message],['maintenance_eta',eta],['maintenance_until',untilIso]]){
+      await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by) VALUES($1,$2,NOW(),$3) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,[key,value,ADMIN_EMAIL||'admin']);
+    }
+    maintenanceCache.at=0;
+    await auditAdmin(req,'maintenance_details','site','global',`message=${message?'set':'blank'};eta=${eta?'set':'blank'};auto_resume=${untilIso||'manual'}`);
+    res.redirect('/admin?success='+encodeURIComponent(untilIso?'Maintenance settings saved. Auto-resume is scheduled.':'Maintenance settings saved. No auto-resume time is set; manual OFF will be required.'));
+  }catch(e){console.error('Maintenance details save error:',e);res.redirect('/admin?error='+encodeURIComponent('Could not save maintenance details'));}
 });
 
 app.post('/admin/site-maintenance/toggle',adminMiddleware,async(req,res)=>{
   try{
     const current=await isSiteMaintenanceOn(true),next=!current;
     await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by) VALUES('maintenance_mode',$1,NOW(),$2) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,[next?'on':'off',ADMIN_EMAIL||'admin']);
+    if(!next){await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by) VALUES('maintenance_until','',NOW(),$1) ON CONFLICT(setting_key) DO UPDATE SET setting_value='',updated_at=NOW(),updated_by=EXCLUDED.updated_by`,[ADMIN_EMAIL||'admin']);}
     maintenanceCache={value:next,at:Date.now()};
     await auditAdmin(req,'site_maintenance','site','global',`maintenance=${next?'on':'off'}`);
     res.redirect('/admin?success='+encodeURIComponent(next?'Website maintenance mode is ON. All public services and short links are paused.':'Website maintenance mode is OFF. Website and short links are live again.'));
@@ -1970,7 +1994,7 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
                   JOIN redeem_codes rc ON rc.id=ru.redeem_code_id
                   JOIN users u ON u.id=ru.user_id
                   ORDER BY ru.redeemed_at DESC LIMIT 500`),
-      pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta')")
+      pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta','maintenance_until')")
     ]);
     const userRealMap=new Map(userRealStatsR.rows.map(r=>[Number(r.id),{
       realClicks:Number(r.real_clicks||0),botClicks:Number(r.bot_clicks||0),uniqueVisitors:Number(r.unique_visitors||0)
@@ -1984,6 +2008,7 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
       siteMaintenanceUpdated:maintenanceR.rowCount?maintenanceR.rows[0]:null,
       maintenanceMessage:(maintenanceDetailsR.rows.find(r=>r.setting_key==='maintenance_message')||{}).setting_value||'',
       maintenanceEta:(maintenanceDetailsR.rows.find(r=>r.setting_key==='maintenance_eta')||{}).setting_value||'',
+      maintenanceUntil:(maintenanceDetailsR.rows.find(r=>r.setting_key==='maintenance_until')||{}).setting_value||'',
 
       adminStats:{totalUsers:users.length,online:active.length,totalLinks:linksR.rows.length,totalClicks:Number(totalClicksR.rows[0].count),botClicks:Number(botClicksR.rows[0].count),pendingPayments:payR.rows.filter(p=>p.status==='pending').length},
       freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan12Price:PLAN_12_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,plan12Usd:PLAN_12_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
