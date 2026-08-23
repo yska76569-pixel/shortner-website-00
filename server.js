@@ -24,6 +24,8 @@ const PLAN_1_PRICE = Math.max(1, Number(process.env.PLAN_1_PRICE || 100));
 const PLAN_3_PRICE = Math.max(1, Number(process.env.PLAN_3_PRICE || 250));
 const PLAN_1_USD = Number(process.env.PLAN_1_USD || 0.81);
 const PLAN_3_USD = Number(process.env.PLAN_3_USD || 2.02);
+const PLAN_12_PRICE = Math.max(1, Number(process.env.PLAN_12_PRICE || 550));
+const PLAN_12_USD = Number(process.env.PLAN_12_USD || 4.45);
 const BKASH_NUMBER = String(process.env.BKASH_NUMBER || '').trim();
 const NAGAD_NUMBER = String(process.env.NAGAD_NUMBER || '').trim();
 const BINANCE_ID = String(process.env.BINANCE_ID || '').trim();
@@ -150,7 +152,8 @@ app.use(async(req,res,next)=>{
     if(!(await isSiteMaintenanceOn())) return next();
     res.set('Cache-Control','no-store, no-cache, must-revalidate');
     if(p.startsWith('/api/')) return res.status(503).json({error:'Website under maintenance',maintenance:true});
-    return res.status(503).send(maintenanceHtml());
+    const maintenanceDetails=await getMaintenancePublicDetails();
+    return res.status(503).send(maintenanceHtml(maintenanceDetails));
   }catch(e){
     console.error('Maintenance middleware error:',e.message);
     next();
@@ -301,6 +304,8 @@ async function initDatabase() {
     INSERT INTO site_settings(setting_key,setting_value)
     VALUES('maintenance_mode','off')
     ON CONFLICT(setting_key) DO NOTHING;
+    INSERT INTO site_settings(setting_key,setting_value) VALUES('maintenance_message','') ON CONFLICT(setting_key) DO NOTHING;
+    INSERT INTO site_settings(setting_key,setting_value) VALUES('maintenance_eta','') ON CONFLICT(setting_key) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS notifications (
       id BIGSERIAL PRIMARY KEY,
@@ -382,9 +387,28 @@ async function isSiteMaintenanceOn(force=false){
     return false;
   }
 }
-function maintenanceHtml(){
+async function getMaintenancePublicDetails(){
+  try{
+    const q=await pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta')");
+    const data={message:'',eta:''};
+    q.rows.forEach(r=>{
+      if(r.setting_key==='maintenance_message') data.message=String(r.setting_value||'').trim();
+      if(r.setting_key==='maintenance_eta') data.eta=String(r.setting_value||'').trim();
+    });
+    return data;
+  }catch(e){
+    console.error('Maintenance details read error:',e.message);
+    return {message:'',eta:''};
+  }
+}
+function maintenanceHtml(meta={}){
+  const esc=(s)=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const message=esc(meta.message||'');
+  const eta=esc(meta.eta||'');
+  const optionalMessage=message?`<div class="note"><strong>Update</strong><span>${message}</span></div>`:'';
+  const optionalEta=eta?`<div class="eta"><span>⏱ Expected restore</span><strong>${eta}</strong></div>`:'';
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="15"><title>Website Under Maintenance</title><style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:Inter,Arial,sans-serif;color:#eef4ff;background:radial-gradient(circle at 20% 20%,rgba(108,99,255,.22),transparent 32%),radial-gradient(circle at 80% 80%,rgba(39,215,255,.12),transparent 34%),#070d1f}.card{width:min(620px,100%);padding:34px 26px;border-radius:26px;text-align:center;background:rgba(18,28,58,.92);border:1px solid rgba(140,160,255,.22);box-shadow:0 30px 90px rgba(0,0,0,.48)}.icon{font-size:52px}.brand{margin:12px 0 4px;font-weight:900;letter-spacing:.02em;color:#9fe9ff}.card h1{font-size:clamp(28px,6vw,46px);margin:10px 0}.card p{color:#aebbd5;line-height:1.7;margin:10px auto;max-width:500px}.pill{display:inline-flex;gap:8px;align-items:center;margin-top:16px;padding:9px 14px;border-radius:999px;color:#ffe59a;background:rgba(255,205,80,.08);border:1px solid rgba(255,205,80,.18);font-weight:800;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#ffd45c;box-shadow:0 0 14px #ffd45c;animation:p 1.3s infinite}@keyframes p{50%{opacity:.35}}small{display:block;margin-top:18px;color:#7181a3}</style></head><body><main class="card"><div class="icon">🛠️</div><div class="brand">THIS PERSON IS BRAND SHORTLINK</div><h1>Website Under Maintenance</h1><p>We are currently performing maintenance and improvements. The website, API and all short links are temporarily paused. Nothing has been deleted.</p><p>Service will resume automatically as soon as maintenance is completed.</p><div class="pill"><span class="dot"></span> Maintenance in progress</div><small>This page checks again automatically every 15 seconds.</small></main></body></html>`;
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:Inter,Arial,sans-serif;color:#eef4ff;background:radial-gradient(circle at 20% 20%,rgba(108,99,255,.22),transparent 32%),radial-gradient(circle at 80% 80%,rgba(39,215,255,.12),transparent 34%),#070d1f}.card{width:min(660px,100%);padding:34px 26px;border-radius:26px;text-align:center;background:rgba(18,28,58,.92);border:1px solid rgba(140,160,255,.22);box-shadow:0 30px 90px rgba(0,0,0,.48)}.icon{font-size:52px}.brand{margin:12px 0 4px;font-weight:900;letter-spacing:.02em;color:#9fe9ff}.card h1{font-size:clamp(28px,6vw,46px);margin:10px 0}.card p{color:#aebbd5;line-height:1.7;margin:10px auto;max-width:540px}.pill{display:inline-flex;gap:8px;align-items:center;margin-top:16px;padding:9px 14px;border-radius:999px;color:#ffe59a;background:rgba(255,205,80,.08);border:1px solid rgba(255,205,80,.18);font-weight:800;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#ffd45c;box-shadow:0 0 14px #ffd45c;animation:p 1.3s infinite}@keyframes p{50%{opacity:.35}}.eta,.note{margin:16px auto 0;max-width:520px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}.eta span,.note strong{color:#9fe9ff}.eta strong{color:#fff}.note span{color:#d8e2f7}.contact{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);color:#93a3c2}.contact a{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:9px 14px;border-radius:999px;text-decoration:none;color:#fff;background:#168bd2;font-weight:800}.contact a:hover{filter:brightness(1.08)}small{display:block;margin-top:18px;color:#7181a3}</style></head><body><main class="card"><div class="icon">🛠️</div><div class="brand">THIS PERSON IS BRAND SHORTLINK</div><h1>Website Under Maintenance</h1><p>We are currently performing maintenance and improvements. The website, API and all short links are temporarily paused. Nothing has been deleted.</p>${optionalMessage}${optionalEta}<div class="pill"><span class="dot"></span> Maintenance in progress</div><div class="contact">Need an update?<br><a href="https://t.me/thispersonisbrand537" target="_blank" rel="noopener noreferrer">✈ Message Admin @thispersonisbrand537</a></div><small>This page checks again automatically every 15 seconds.</small></main></body></html>`;
 }
 
 function toIso(v) { return v ? new Date(v).toISOString() : null; }
@@ -827,7 +851,12 @@ async function adminMiddleware(req,res,next){
     return res.redirect('/admin/login?error=' + encodeURIComponent('Admin authentication failed'));
   }
 }
-function expectedPlanAmount(months){ return Number(months) === 3 ? PLAN_3_PRICE : PLAN_1_PRICE; }
+function expectedPlanAmount(months){
+  const m=Number(months);
+  if(m===12) return PLAN_12_PRICE;
+  if(m===3) return PLAN_3_PRICE;
+  return PLAN_1_PRICE;
+}
 function paymentConfig(){ return {
   bkashNumber:BKASH_NUMBER, nagadNumber:NAGAD_NUMBER, binanceId:BINANCE_ID,
   bkashConfigured:!!BKASH_NUMBER, nagadConfigured:!!NAGAD_NUMBER, binanceConfigured:!!BINANCE_ID
@@ -1795,7 +1824,7 @@ app.get('/plans', authMiddleware, async (req,res)=>{
       page:'plans',user,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,
       customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL,
-      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,
+      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan12Price:PLAN_12_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,plan12Usd:PLAN_12_USD,
       bkashNumber:pay.bkashNumber,nagadNumber:pay.nagadNumber,binanceId:pay.binanceId,
       bkashConfigured:pay.bkashConfigured,nagadConfigured:pay.nagadConfigured,binanceConfigured:pay.binanceConfigured,
       paymentHistory:payments.rows
@@ -1813,7 +1842,7 @@ app.get('/api/payment-config-status', authMiddleware, async(req,res)=>{
 app.post('/payments', authMiddleware, paymentUpload.single('screenshot'), async (req,res)=>{
   try {
     const months = Number(req.body.planMonths);
-    if (![1,3].includes(months)) return res.redirect('/plans?error='+encodeURIComponent('Invalid plan'));
+    if (![1,3,12].includes(months)) return res.redirect('/plans?error='+encodeURIComponent('Invalid plan'));
     const method = String(req.body.method||'').toLowerCase();
     if (!['bkash','nagad','binance'].includes(method)) return res.redirect('/plans?error='+encodeURIComponent('Choose bKash, Nagad or Binance'));
 
@@ -1873,6 +1902,27 @@ app.post('/admin/redeem-codes/:id/toggle',adminMiddleware,async(req,res)=>{
 app.post('/admin/redeem-codes/:id/delete',adminMiddleware,async(req,res)=>{
   try{const id=Number(req.params.id);const q=await pool.query('DELETE FROM redeem_codes WHERE id=$1 RETURNING code',[id]);if(!q.rowCount)return res.redirect('/admin?error='+encodeURIComponent('Redeem code not found'));await auditAdmin(req,'redeem_code_delete','redeem_code',id,`code=${q.rows[0].code}`);res.redirect('/admin?success='+encodeURIComponent('Redeem code deleted'));}catch(e){res.redirect('/admin?error='+encodeURIComponent('Could not delete redeem code'));}
 });
+
+app.post('/admin/site-maintenance/settings',adminMiddleware,async(req,res)=>{
+  try{
+    const message=String(req.body.maintenanceMessage||'').trim().slice(0,500);
+    const eta=String(req.body.maintenanceEta||'').trim().slice(0,160);
+    await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
+      VALUES('maintenance_message',$1,NOW(),$2)
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,
+      [message,ADMIN_EMAIL||'admin']);
+    await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by)
+      VALUES('maintenance_eta',$1,NOW(),$2)
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,
+      [eta,ADMIN_EMAIL||'admin']);
+    await auditAdmin(req,'maintenance_details','site','global',`message=${message?'set':'blank'};eta=${eta?'set':'blank'}`);
+    res.redirect('/admin?success='+encodeURIComponent('Maintenance page details saved.'));
+  }catch(e){
+    console.error('Maintenance details save error:',e);
+    res.redirect('/admin?error='+encodeURIComponent('Could not save maintenance details'));
+  }
+});
+
 app.post('/admin/site-maintenance/toggle',adminMiddleware,async(req,res)=>{
   try{
     const current=await isSiteMaintenanceOn(true),next=!current;
@@ -1885,7 +1935,7 @@ app.post('/admin/site-maintenance/toggle',adminMiddleware,async(req,res)=>{
 
 app.get('/admin', adminMiddleware, async (req,res)=>{
   try {
-    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR,topCountriesR,topUserCountriesR,userRealStatsR,redeemCodesR,maintenanceR] = await Promise.all([
+    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR,topCountriesR,topUserCountriesR,userRealStatsR,redeemCodesR,maintenanceR,redeemUsersR,maintenanceDetailsR] = await Promise.all([
       pool.query('SELECT * FROM users ORDER BY created_at DESC LIMIT 500'),
       pool.query(`SELECT l.*,u.display_name,u.username FROM links l JOIN users u ON u.id=l.user_id ORDER BY l.created_at DESC LIMIT 500`),
       pool.query(`SELECT p.*,u.display_name,u.username,u.email FROM payments p JOIN users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 300`),
@@ -1911,7 +1961,16 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
                   FROM users u LEFT JOIN clicks c ON c.user_id=u.id
                   GROUP BY u.id`),
       pool.query(`SELECT r.*,COUNT(u.id)::int AS used_count FROM redeem_codes r LEFT JOIN redeem_code_uses u ON u.redeem_code_id=r.id GROUP BY r.id ORDER BY r.created_at DESC LIMIT 200`),
-      pool.query("SELECT setting_value,updated_at,updated_by FROM site_settings WHERE setting_key='maintenance_mode' LIMIT 1")
+      pool.query("SELECT setting_value,updated_at,updated_by FROM site_settings WHERE setting_key='maintenance_mode' LIMIT 1"),
+      pool.query(`SELECT ru.redeemed_at,rc.code,rc.premium_days,
+                         u.id AS user_id,u.telegram_id,u.username,u.first_name,u.last_name,u.display_name,u.email,u.timezone,
+                         u.account_status,u.created_at AS user_created_at,u.last_login,u.total_links,u.total_clicks,
+                         u.lifetime_links_created,u.plan_type,u.premium_until
+                  FROM redeem_code_uses ru
+                  JOIN redeem_codes rc ON rc.id=ru.redeem_code_id
+                  JOIN users u ON u.id=ru.user_id
+                  ORDER BY ru.redeemed_at DESC LIMIT 500`),
+      pool.query("SELECT setting_key,setting_value FROM site_settings WHERE setting_key IN ('maintenance_message','maintenance_eta')")
     ]);
     const userRealMap=new Map(userRealStatsR.rows.map(r=>[Number(r.id),{
       realClicks:Number(r.real_clicks||0),botClicks:Number(r.bot_clicks||0),uniqueVisitors:Number(r.unique_visitors||0)
@@ -1920,9 +1979,14 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
     res.render('index',{page:'admin',user:req.session?.user?.id?await getUserById(req.session.user.id):null,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,
       error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL,
       adminUsers:users,adminLinks:linksR.rows,adminPayments:payR.rows,adminAudit:auditR.rows,adminDomains:domainsR.rows,adminBackups:backupsR.rows,adminAnnouncements:announcementsR.rows,adminTopCountries:topCountriesR.rows,adminTopUserCountries:topUserCountriesR.rows,
-      adminRedeemCodes:redeemCodesR.rows,siteMaintenanceOn:!!maintenanceR.rowCount && String(maintenanceR.rows[0].setting_value||'').toLowerCase()==='on',siteMaintenanceUpdated:maintenanceR.rowCount?maintenanceR.rows[0]:null,
+      adminRedeemCodes:redeemCodesR.rows,adminRedeemUsers:redeemUsersR.rows,
+      siteMaintenanceOn:!!maintenanceR.rowCount && String(maintenanceR.rows[0].setting_value||'').toLowerCase()==='on',
+      siteMaintenanceUpdated:maintenanceR.rowCount?maintenanceR.rows[0]:null,
+      maintenanceMessage:(maintenanceDetailsR.rows.find(r=>r.setting_key==='maintenance_message')||{}).setting_value||'',
+      maintenanceEta:(maintenanceDetailsR.rows.find(r=>r.setting_key==='maintenance_eta')||{}).setting_value||'',
+
       adminStats:{totalUsers:users.length,online:active.length,totalLinks:linksR.rows.length,totalClicks:Number(totalClicksR.rows[0].count),botClicks:Number(botClicksR.rows[0].count),pendingPayments:payR.rows.filter(p=>p.status==='pending').length},
-      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
+      freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan12Price:PLAN_12_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,plan12Usd:PLAN_12_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
     });
   }catch(e){console.error('Admin page error:',e);res.redirect('/admin/login?error='+encodeURIComponent('Admin page database error'));}
 });
