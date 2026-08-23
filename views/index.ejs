@@ -2962,6 +2962,20 @@ textarea::placeholder{
         .maintenance-admin-head,.admin-redeem-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}.maintenance-admin-head p,.admin-redeem-head p{color:var(--text-muted);font-size:.74rem;line-height:1.55;max-width:780px;margin:.3rem 0 0}.maintenance-status-pill{display:inline-flex;align-items:center;padding:.45rem .7rem;border-radius:999px;font-size:.66rem;font-weight:900;letter-spacing:.05em}.maintenance-status-pill.on{color:#FFD0D8;background:rgba(255,94,122,.08);border:1px solid rgba(255,94,122,.20)}.maintenance-status-pill.off{color:#8CFFD1;background:rgba(51,230,161,.07);border:1px solid rgba(51,230,161,.18)}.maintenance-last-change{display:block;margin-top:.7rem;color:#7F8EAE;font-size:.64rem}.admin-redeem-create{display:grid;grid-template-columns:1.35fr .7fr .7fr auto;gap:.7rem;align-items:end}.admin-redeem-submit-wrap .btn{white-space:nowrap}.admin-code-copy-row{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}.admin-code-copy-row code{color:#9FEAFF;font-weight:800;letter-spacing:.04em}
         @media(max-width:950px){.admin-redeem-create{grid-template-columns:1fr 1fr}}@media(max-width:650px){.redeem-form,.admin-redeem-create{grid-template-columns:1fr}.redeem-submit{width:100%}}
 
+
+        /* ===== V7.37 MAINTENANCE DETAILS + REDEEM USERS ===== */
+        .maintenance-details-form{display:grid;grid-template-columns:1.4fr 1fr auto;gap:.7rem;align-items:end;margin:1rem 0}
+        .maintenance-details-form textarea{resize:vertical;min-height:76px}
+        .maintenance-toggle-row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+        .maintenance-persist-note{display:inline-flex;align-items:center;gap:.4rem;color:#8CFFD1;font-size:.67rem;padding:.4rem .6rem;border-radius:10px;background:rgba(51,230,161,.055);border:1px solid rgba(51,230,161,.13)}
+        .redeem-user-table-wrap{max-height:620px;overflow:auto}
+        .redeem-user-table{min-width:1450px}
+        .redeem-user-table td{vertical-align:top;white-space:normal;line-height:1.45}
+        .redeem-user-table small{color:#8F9FBE;font-size:.62rem}
+        .redeem-user-table code{color:#9FEAFF;font-weight:800}
+        @media(max-width:1000px){.maintenance-details-form{grid-template-columns:1fr 1fr}.maintenance-details-form button{grid-column:1/-1}}
+        @media(max-width:650px){.maintenance-details-form{grid-template-columns:1fr}.maintenance-details-form button{grid-column:auto}}
+
 </style>
 </head>
 <body>
@@ -4488,6 +4502,10 @@ textarea::placeholder{
                     <h3>Premium • 3 Months</h3><div class="plan-price">৳<%= plan3Price %> <span class="usd-price">≈ $<%= Number(plan3Usd).toFixed(2) %></span></div>
                     <p>Unlimited short links</p><p>Full analytics</p><p>Longer validity</p>
                 </div>
+                <div class="plan-card featured">
+                    <h3>Premium • 1 Year</h3><div class="plan-price">৳<%= plan12Price %> <span class="usd-price">≈ $<%= Number(plan12Usd).toFixed(2) %></span></div>
+                    <p>Unlimited short links</p><p>Full analytics + API access</p><p>12 months Premium validity</p>
+                </div>
             </div>
 
             <div class="glass-card payment-box interactive-payment-card">
@@ -4515,7 +4533,7 @@ textarea::placeholder{
                     <div class="payment-method-card binance">
                         <div class="payment-method-title">Binance</div>
                         <div class="copy-payment-row"><strong>Binance ID: <span id="binanceCopyValue"><%= (typeof binanceId !== 'undefined' && binanceId) ? binanceId : 'Not configured' %></span></strong><button type="button" class="copy-payment-btn" onclick="copyPaymentValue('binanceCopyValue','Binance ID copied')"><i class="fas fa-copy"></i> Copy</button></div>
-                        <span>USD plan amount: 1 Month ≈ $<%= Number(plan1Usd).toFixed(2) %> • 3 Months ≈ $<%= Number(plan3Usd).toFixed(2) %><br>Submit Order ID + payment screenshot</span>
+                        <span>USD plan amount: 1 Month ≈ $<%= Number(plan1Usd).toFixed(2) %> • 3 Months ≈ $<%= Number(plan3Usd).toFixed(2) %> • 1 Year ≈ $<%= Number(plan12Usd).toFixed(2) %><br>Submit Order ID + payment screenshot</span>
                     </div>
                 </div>
 
@@ -4526,7 +4544,7 @@ textarea::placeholder{
 
                 <form action="/payments" method="POST" enctype="multipart/form-data" id="premiumPaymentForm">
                     <div class="payment-form-grid">
-                        <div class="form-group"><label>Plan</label><select class="form-control" name="planMonths" required><option value="1">1 Month — ৳<%= plan1Price %> / ≈ $<%= Number(plan1Usd).toFixed(2) %></option><option value="3">3 Months — ৳<%= plan3Price %> / ≈ $<%= Number(plan3Usd).toFixed(2) %></option></select></div>
+                        <div class="form-group"><label>Plan</label><select class="form-control" name="planMonths" required><option value="1">1 Month — ৳<%= plan1Price %> / ≈ $<%= Number(plan1Usd).toFixed(2) %></option><option value="3">3 Months — ৳<%= plan3Price %> / ≈ $<%= Number(plan3Usd).toFixed(2) %></option><option value="12">1 Year — ৳<%= plan12Price %> / ≈ $<%= Number(plan12Usd).toFixed(2) %></option></select></div>
                         <div class="form-group"><label>Payment Method</label><select class="form-control" name="method" id="paymentMethodSelect" required><option value="bkash">bKash — Send Money</option><option value="nagad">Nagad — Send Money</option><option value="binance">Binance</option></select></div>
                     </div>
 
@@ -4765,7 +4783,15 @@ textarea::placeholder{
 
             <div class="glass-card site-maintenance-admin-card" style="margin-bottom:1.5rem;">
                 <div class="maintenance-admin-head"><div><div class="dashboard-kicker">GLOBAL CONTROL</div><h2>🛠 Website Maintenance Mode</h2><p>When ON, the public website, user pages, API and every short-link redirect are paused. Admin Panel and /health stay available. Nothing is deleted.</p></div><span class="maintenance-status-pill <%= siteMaintenanceOn?'on':'off' %>"><%= siteMaintenanceOn?'MAINTENANCE ON':'WEBSITE LIVE' %></span></div>
-                <form method="POST" action="/admin/site-maintenance/toggle" onsubmit="return confirm('<%= siteMaintenanceOn?'Turn maintenance OFF and restore the website?':'Turn maintenance ON? Public pages, API and all short links will pause.' %>')"><button class="btn <%= siteMaintenanceOn?'btn-primary':'btn-warning' %>" type="submit"><i class="fas <%= siteMaintenanceOn?'fa-play':'fa-screwdriver-wrench' %>"></i> <%= siteMaintenanceOn?'Turn Maintenance OFF — Resume Website':'Turn Maintenance ON — Pause Website' %></button></form>
+                <form method="POST" action="/admin/site-maintenance/settings" class="maintenance-details-form">
+                    <div class="form-group"><label>Maintenance Message (optional)</label><textarea class="form-control" name="maintenanceMessage" maxlength="500" rows="3" placeholder="Example: We are upgrading our redirect servers."><%= maintenanceMessage || '' %></textarea></div>
+                    <div class="form-group"><label>Expected Restore Time (optional)</label><input class="form-control" name="maintenanceEta" maxlength="160" value="<%= maintenanceEta || '' %>" placeholder="Example: Within 1 hour / 10:30 PM"></div>
+                    <button class="btn btn-secondary" type="submit"><i class="fas fa-floppy-disk"></i> Save Maintenance Page Details</button>
+                </form>
+                <div class="maintenance-toggle-row">
+                    <form method="POST" action="/admin/site-maintenance/toggle" onsubmit="return confirm('<%= siteMaintenanceOn?'Turn maintenance OFF and restore the website?':'Turn maintenance ON? Public pages, API and all short links will pause.' %>')"><button class="btn <%= siteMaintenanceOn?'btn-primary':'btn-warning' %>" type="submit"><i class="fas <%= siteMaintenanceOn?'fa-play':'fa-screwdriver-wrench' %>"></i> <%= siteMaintenanceOn?'Turn Maintenance OFF — Resume Website':'Turn Maintenance ON — Pause Website' %></button></form>
+                    <span class="maintenance-persist-note"><i class="fas fa-database"></i> State saved in PostgreSQL — Railway redeploy/restart will not turn it off.</span>
+                </div>
                 <% if(siteMaintenanceUpdated){ %><small class="maintenance-last-change">Last changed: <%= siteMaintenanceUpdated.updated_at?new Date(siteMaintenanceUpdated.updated_at).toLocaleString():'-' %> · <%= siteMaintenanceUpdated.updated_by||'admin' %></small><% } %>
             </div>
 
@@ -4781,6 +4807,51 @@ textarea::placeholder{
                 <% (adminRedeemCodes||[]).forEach(function(r){ %><tr><td><div class="admin-code-copy-row"><code><%= r.code %></code><button type="button" class="copy-payment-btn" onclick="navigator.clipboard.writeText('<%= r.code %>');showToast('Redeem code copied','success')"><i class="fas fa-copy"></i> Copy</button></div></td><td><strong><%= r.premium_days %> days</strong></td><td><strong><%= r.used_count %> / <%= r.max_uses %></strong></td><td><span class="domain-state-pill <%= r.is_active && Number(r.used_count)<Number(r.max_uses)?'active':'coming' %>"><%= !r.is_active?'Disabled':(Number(r.used_count)>=Number(r.max_uses)?'Limit Reached':'Active') %></span></td><td><%= new Date(r.created_at).toLocaleString() %></td><td><div class="admin-actions"><form method="POST" action="/admin/redeem-codes/<%= r.id %>/toggle"><button class="btn btn-sm btn-secondary"><%= r.is_active?'Disable':'Enable' %></button></form><form method="POST" action="/admin/redeem-codes/<%= r.id %>/delete" onsubmit="return confirm('Delete this redeem code and usage history?')"><button class="btn btn-sm btn-danger">Delete</button></form></div></td></tr><% }); %>
                 <% if(!(adminRedeemCodes||[]).length){ %><tr><td colspan="6">No redeem codes generated yet.</td></tr><% } %>
                 </tbody></table></div>
+            </div>
+
+            <div class="glass-card admin-redeemed-users-card" style="margin-bottom:1.5rem;">
+                <div class="admin-redeem-head">
+                    <div><div class="dashboard-kicker">REDEEM ACTIVITY</div><h2>👥 Redeemed Users — Full Details</h2><p>Every successful redeem is listed here with the user's account, Telegram and Premium information.</p></div>
+                    <span class="maintenance-status-pill off"><%= (adminRedeemUsers||[]).length %> Redeem(s)</span>
+                </div>
+                <div class="admin-table-wrap redeem-user-table-wrap">
+                    <table class="admin-table redeem-user-table">
+                        <thead><tr>
+                            <th>Redeemed</th><th>Code</th><th>User</th><th>Telegram</th><th>Email</th><th>Account</th><th>Premium</th><th>Usage</th><th>Dates</th><th>Action</th>
+                        </tr></thead>
+                        <tbody>
+                        <% (adminRedeemUsers||[]).forEach(function(r){ %>
+                            <tr>
+                                <td><strong><%= new Date(r.redeemed_at).toLocaleString() %></strong><br><small>+<%= r.premium_days %> days</small></td>
+                                <td><code><%= r.code %></code></td>
+                                <td>
+                                    <strong><%= r.display_name || ((r.first_name||'')+' '+(r.last_name||'')).trim() || r.username || ('User #'+r.user_id) %></strong><br>
+                                    <small>ID: <%= r.user_id %> · @<%= r.username || 'N/A' %></small><br>
+                                    <small>Timezone: <%= r.timezone || 'N/A' %></small>
+                                </td>
+                                <td><strong><%= r.telegram_id || 'N/A' %></strong></td>
+                                <td><%= r.email || 'N/A' %></td>
+                                <td><span class="status-pill <%= r.account_status==='active'?'ok':'bad' %>"><%= r.account_status || 'active' %></span></td>
+                                <td>
+                                    <strong><%= r.plan_type || 'free' %></strong><br>
+                                    <small><%= r.premium_until ? ('Until '+new Date(r.premium_until).toLocaleString()) : 'No expiry' %></small>
+                                </td>
+                                <td>
+                                    <small>Links: <%= r.total_links || 0 %></small><br>
+                                    <small>Lifetime Created: <%= r.lifetime_links_created || 0 %></small><br>
+                                    <small>Clicks: <%= Number(r.total_clicks||0).toLocaleString() %></small>
+                                </td>
+                                <td>
+                                    <small>Joined: <%= r.user_created_at ? new Date(r.user_created_at).toLocaleString() : '-' %></small><br>
+                                    <small>Last Login: <%= r.last_login ? new Date(r.last_login).toLocaleString() : '-' %></small>
+                                </td>
+                                <td><a class="btn btn-sm btn-secondary" href="/admin/users/<%= r.user_id %>/stats"><i class="fas fa-chart-line"></i> Full Stats</a></td>
+                            </tr>
+                        <% }); %>
+                        <% if(!(adminRedeemUsers||[]).length){ %><tr><td colspan="10">No user has redeemed a code yet.</td></tr><% } %>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="glass-card" style="margin-bottom:1.5rem;">
