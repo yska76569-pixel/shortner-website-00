@@ -2956,6 +2956,12 @@ textarea::placeholder{
   .google-analytics-summary{grid-template-columns:1fr}
 }
 
+
+        /* ===== V7.36 REDEEM + MAINTENANCE ===== */
+        .redeem-page{max-width:980px;margin:0 auto}.redeem-main-card{padding:1.5rem!important;text-align:center;margin-bottom:1rem}.redeem-icon{width:68px;height:68px;margin:0 auto .8rem;border-radius:20px;display:grid;place-items:center;font-size:1.8rem;color:#B8F5FF;background:linear-gradient(135deg,rgba(124,92,255,.28),rgba(39,215,255,.15));border:1px solid rgba(124,92,255,.28)}.redeem-sub{color:var(--text-muted);font-size:.76rem;margin:.35rem auto 1rem}.redeem-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem;max-width:680px;margin:0 auto}.redeem-input{text-transform:uppercase;font-weight:800;letter-spacing:.08em;text-align:center}.redeem-submit{min-width:150px;justify-content:center}.redeem-current-plan{margin:1rem auto 0;max-width:500px;padding:.75rem 1rem;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap;color:#AEBBD5}.redeem-current-plan strong{color:#fff}.redeem-current-plan small{width:100%;color:#8CFFD1}.redeem-history-card{padding:1rem!important}.redeem-history-card h2{font-size:1.05rem;margin-bottom:.8rem}
+        .maintenance-admin-head,.admin-redeem-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}.maintenance-admin-head p,.admin-redeem-head p{color:var(--text-muted);font-size:.74rem;line-height:1.55;max-width:780px;margin:.3rem 0 0}.maintenance-status-pill{display:inline-flex;align-items:center;padding:.45rem .7rem;border-radius:999px;font-size:.66rem;font-weight:900;letter-spacing:.05em}.maintenance-status-pill.on{color:#FFD0D8;background:rgba(255,94,122,.08);border:1px solid rgba(255,94,122,.20)}.maintenance-status-pill.off{color:#8CFFD1;background:rgba(51,230,161,.07);border:1px solid rgba(51,230,161,.18)}.maintenance-last-change{display:block;margin-top:.7rem;color:#7F8EAE;font-size:.64rem}.admin-redeem-create{display:grid;grid-template-columns:1.35fr .7fr .7fr auto;gap:.7rem;align-items:end}.admin-redeem-submit-wrap .btn{white-space:nowrap}.admin-code-copy-row{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}.admin-code-copy-row code{color:#9FEAFF;font-weight:800;letter-spacing:.04em}
+        @media(max-width:950px){.admin-redeem-create{grid-template-columns:1fr 1fr}}@media(max-width:650px){.redeem-form,.admin-redeem-create{grid-template-columns:1fr}.redeem-submit{width:100%}}
+
 </style>
 </head>
 <body>
@@ -3104,6 +3110,7 @@ textarea::placeholder{
                     <a class="<%= page === 'api-access' ? 'active' : '' %>" href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                     <a class="<%= page === 'notifications' ? 'active' : '' %>" href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
                     <a class="<%= page === 'plans' ? 'active' : '' %>" href="/plans"><i class="fas fa-crown"></i><span>Plans & Payment</span></a>
+                    <a class="<%= page === 'redeem' ? 'active' : '' %>" href="/redeem"><i class="fas fa-gift"></i><span>Redeem Code</span></a>
                     <button type="button" onclick="openProfileModal()"><i class="fas fa-user"></i><span>Profile</span></button>
                     <% if (user.isAdmin) { %>
                         <a href="/admin"><i class="fas fa-shield-halved"></i><span>Admin Panel</span></a>
@@ -4440,6 +4447,22 @@ textarea::placeholder{
         <% } %>
 
 
+
+        <!-- ===== REDEEM CODE PAGE ===== -->
+        <% if (page === 'redeem') { %>
+            <div class="redeem-page">
+                <div class="my-links-header"><div><div class="dashboard-kicker">PREMIUM ACCESS</div><h1><i class="fas fa-gift"></i> Redeem Code</h1><p>Enter a valid code to add Premium time to your account.</p></div><a href="/plans" class="btn btn-secondary"><i class="fas fa-crown"></i> View Plans</a></div>
+                <div class="glass-card redeem-main-card">
+                    <div class="redeem-icon"><i class="fas fa-ticket"></i></div><h2>Enter Your Redeem Code</h2><p class="redeem-sub">Each account can use the same code only once.</p>
+                    <form method="POST" action="/redeem" class="redeem-form"><input class="form-control redeem-input" name="code" maxlength="64" required autocomplete="off" placeholder="Example: TPIB-ABC123"><button class="btn btn-primary redeem-submit" type="submit"><i class="fas fa-bolt"></i> Redeem Now</button></form>
+                    <div class="redeem-current-plan"><span>Current Plan</span><strong><%= user.isPremium ? '👑 Premium' : 'Free' %></strong><% if(user.isPremium && user.premiumUntil){ %><small>Premium until <%= new Date(user.premiumUntil).toLocaleDateString() %></small><% } %></div>
+                </div>
+                <div class="glass-card redeem-history-card"><h2><i class="fas fa-clock-rotate-left"></i> Redeem History</h2>
+                <% if(redeemHistory && redeemHistory.length){ %><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Code</th><th>Premium Added</th><th>Redeemed</th></tr></thead><tbody><% redeemHistory.forEach(function(r){ %><tr><td><code><%= r.code %></code></td><td><strong><%= r.premium_days %> day(s)</strong></td><td><%= new Date(r.redeemed_at).toLocaleString() %></td></tr><% }); %></tbody></table></div><% } else { %><div class="empty-links-state"><i class="fas fa-gift"></i><h3>No redeemed codes yet</h3><p>Your successful redeem history will appear here.</p></div><% } %>
+                </div>
+            </div>
+        <% } %>
+
         <!-- ===== PLANS PAGE ===== -->
         <% if (page === 'plans') { %>
             <div class="brand-center fade-in">
@@ -4738,6 +4761,27 @@ textarea::placeholder{
             </div>
 
 
+
+
+            <div class="glass-card site-maintenance-admin-card" style="margin-bottom:1.5rem;">
+                <div class="maintenance-admin-head"><div><div class="dashboard-kicker">GLOBAL CONTROL</div><h2>🛠 Website Maintenance Mode</h2><p>When ON, the public website, user pages, API and every short-link redirect are paused. Admin Panel and /health stay available. Nothing is deleted.</p></div><span class="maintenance-status-pill <%= siteMaintenanceOn?'on':'off' %>"><%= siteMaintenanceOn?'MAINTENANCE ON':'WEBSITE LIVE' %></span></div>
+                <form method="POST" action="/admin/site-maintenance/toggle" onsubmit="return confirm('<%= siteMaintenanceOn?'Turn maintenance OFF and restore the website?':'Turn maintenance ON? Public pages, API and all short links will pause.' %>')"><button class="btn <%= siteMaintenanceOn?'btn-primary':'btn-warning' %>" type="submit"><i class="fas <%= siteMaintenanceOn?'fa-play':'fa-screwdriver-wrench' %>"></i> <%= siteMaintenanceOn?'Turn Maintenance OFF — Resume Website':'Turn Maintenance ON — Pause Website' %></button></form>
+                <% if(siteMaintenanceUpdated){ %><small class="maintenance-last-change">Last changed: <%= siteMaintenanceUpdated.updated_at?new Date(siteMaintenanceUpdated.updated_at).toLocaleString():'-' %> · <%= siteMaintenanceUpdated.updated_by||'admin' %></small><% } %>
+            </div>
+
+            <div class="glass-card admin-redeem-card" style="margin-bottom:1.5rem;">
+                <div class="admin-redeem-head"><div><div class="dashboard-kicker">PREMIUM PROMOTION</div><h2>🎟️ Redeem Code Manager</h2><p>Generate a code, set how many Premium days it adds and the maximum number of users who can redeem it.</p></div></div>
+                <form method="POST" action="/admin/redeem-codes/create" class="admin-redeem-create">
+                    <div class="form-group"><label>Custom Code (optional)</label><input class="form-control" name="code" maxlength="64" placeholder="Leave empty to auto-generate"></div>
+                    <div class="form-group"><label>Premium Validity (days)</label><input class="form-control" type="number" name="premiumDays" min="1" max="3650" value="30" required></div>
+                    <div class="form-group"><label>Maximum Users</label><input class="form-control" type="number" name="maxUses" min="1" max="100000" value="1" required></div>
+                    <div class="form-group admin-redeem-submit-wrap"><label>&nbsp;</label><button class="btn btn-primary" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Generate Code</button></div>
+                </form>
+                <div class="admin-table-wrap" style="margin-top:1rem;"><table class="admin-table"><thead><tr><th>Code</th><th>Premium</th><th>Used</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>
+                <% (adminRedeemCodes||[]).forEach(function(r){ %><tr><td><div class="admin-code-copy-row"><code><%= r.code %></code><button type="button" class="copy-payment-btn" onclick="navigator.clipboard.writeText('<%= r.code %>');showToast('Redeem code copied','success')"><i class="fas fa-copy"></i> Copy</button></div></td><td><strong><%= r.premium_days %> days</strong></td><td><strong><%= r.used_count %> / <%= r.max_uses %></strong></td><td><span class="domain-state-pill <%= r.is_active && Number(r.used_count)<Number(r.max_uses)?'active':'coming' %>"><%= !r.is_active?'Disabled':(Number(r.used_count)>=Number(r.max_uses)?'Limit Reached':'Active') %></span></td><td><%= new Date(r.created_at).toLocaleString() %></td><td><div class="admin-actions"><form method="POST" action="/admin/redeem-codes/<%= r.id %>/toggle"><button class="btn btn-sm btn-secondary"><%= r.is_active?'Disable':'Enable' %></button></form><form method="POST" action="/admin/redeem-codes/<%= r.id %>/delete" onsubmit="return confirm('Delete this redeem code and usage history?')"><button class="btn btn-sm btn-danger">Delete</button></form></div></td></tr><% }); %>
+                <% if(!(adminRedeemCodes||[]).length){ %><tr><td colspan="6">No redeem codes generated yet.</td></tr><% } %>
+                </tbody></table></div>
+            </div>
 
             <div class="glass-card" style="margin-bottom:1.5rem;">
                 <h2>📢 Site Announcement / News Ticker</h2>
