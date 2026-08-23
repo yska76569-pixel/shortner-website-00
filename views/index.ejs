@@ -2964,7 +2964,7 @@ textarea::placeholder{
 
 
         /* ===== V7.37 MAINTENANCE DETAILS + REDEEM USERS ===== */
-        .maintenance-details-form{display:grid;grid-template-columns:1.35fr .9fr 1fr auto;gap:.7rem;align-items:end;margin:1rem 0}
+        .maintenance-details-form{display:grid;grid-template-columns:1.4fr 1fr auto;gap:.7rem;align-items:end;margin:1rem 0}
         .maintenance-details-form textarea{resize:vertical;min-height:76px}
         .maintenance-toggle-row{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
         .maintenance-persist-note{display:inline-flex;align-items:center;gap:.4rem;color:#8CFFD1;font-size:.67rem;padding:.4rem .6rem;border-radius:10px;background:rgba(51,230,161,.055);border:1px solid rgba(51,230,161,.13)}
@@ -2976,7 +2976,10 @@ textarea::placeholder{
         @media(max-width:1000px){.maintenance-details-form{grid-template-columns:1fr 1fr}.maintenance-details-form button{grid-column:1/-1}}
         @media(max-width:650px){.maintenance-details-form{grid-template-columns:1fr}.maintenance-details-form button{grid-column:auto}}
 
-        .maintenance-field-help,.maintenance-current-auto{display:block;margin-top:.35rem;color:#8193B6;font-size:.62rem;line-height:1.45}.maintenance-current-auto{color:#8CFFD1}
+
+        .maintenance-field-help,.maintenance-current-auto{display:block;margin-top:.35rem;color:#8193B6;font-size:.62rem;line-height:1.45}
+        .maintenance-current-auto{color:#8CFFD1}
+
 </style>
 </head>
 <body>
@@ -4786,9 +4789,15 @@ textarea::placeholder{
                 <div class="maintenance-admin-head"><div><div class="dashboard-kicker">GLOBAL CONTROL</div><h2>🛠 Website Maintenance Mode</h2><p>When ON, the public website, user pages, API and every short-link redirect are paused. Admin Panel and /health stay available. Nothing is deleted.</p></div><span class="maintenance-status-pill <%= siteMaintenanceOn?'on':'off' %>"><%= siteMaintenanceOn?'MAINTENANCE ON':'WEBSITE LIVE' %></span></div>
                 <form method="POST" action="/admin/site-maintenance/settings" class="maintenance-details-form" id="maintenanceSettingsForm">
                     <div class="form-group"><label>Maintenance Message (optional)</label><textarea class="form-control" name="maintenanceMessage" maxlength="500" rows="3" placeholder="Example: We are upgrading our redirect servers."><%= maintenanceMessage || '' %></textarea></div>
-                    <div class="form-group"><label>Expected Restore Text (optional)</label><input class="form-control" name="maintenanceEta" maxlength="160" value="<%= maintenanceEta || '' %>" placeholder="Example: Within 1 hour"></div>
-                    <div class="form-group"><label>Auto Resume Date & Time (optional)</label><input class="form-control" type="datetime-local" name="maintenanceUntil" id="maintenanceUntilInput"><input type="hidden" name="timezoneOffset" id="maintenanceTimezoneOffset"><small class="maintenance-field-help">Set a time only if you want automatic website resume. Leave blank for manual OFF.</small><% if(maintenanceUntil){ %><small class="maintenance-current-auto">Current auto-resume: <span id="maintenanceCurrentAuto" data-utc="<%= maintenanceUntil %>"></span></small><% } %></div>
-                    <button class="btn btn-secondary" type="submit"><i class="fas fa-floppy-disk"></i> Save Maintenance Settings</button>
+                    <div class="form-group"><label>Expected Restore Time (optional)</label><input class="form-control" name="maintenanceEta" maxlength="160" value="<%= maintenanceEta || '' %>" placeholder="Example: Within 1 hour / 10:30 PM"></div>
+                    <div class="form-group">
+                        <label>Auto Resume Date & Time (optional)</label>
+                        <input class="form-control" type="datetime-local" name="maintenanceUntil" id="maintenanceUntilInput">
+                        <input type="hidden" name="timezoneOffset" id="maintenanceTimezoneOffset">
+                        <small class="maintenance-field-help">Set a time only if you want automatic resume. Leave blank for manual OFF.</small>
+                        <% if(maintenanceUntil){ %><small class="maintenance-current-auto">Current auto-resume: <span id="maintenanceCurrentAuto" data-utc="<%= maintenanceUntil %>"></span></small><% } %>
+                    </div>
+                    <button class="btn btn-secondary" type="submit"><i class="fas fa-floppy-disk"></i> Save Maintenance Page Details</button>
                 </form>
                 <div class="maintenance-toggle-row">
                     <form method="POST" action="/admin/site-maintenance/toggle" onsubmit="return confirm('<%= siteMaintenanceOn?'Turn maintenance OFF and restore the website?':'Turn maintenance ON? Public pages, API and all short links will pause.' %>')"><button class="btn <%= siteMaintenanceOn?'btn-primary':'btn-warning' %>" type="submit"><i class="fas <%= siteMaintenanceOn?'fa-play':'fa-screwdriver-wrench' %>"></i> <%= siteMaintenanceOn?'Turn Maintenance OFF — Resume Website':'Turn Maintenance ON — Pause Website' %></button></form>
@@ -5509,8 +5518,7 @@ textarea::placeholder{
                     '<p style="word-break:break-all;color:#9eeaff;font-size:14px;line-height:1.5">' + safeUrlHtml + '</p>' +
                     '<p style="color:#9eacc8;font-size:12px">This QR opens the exact selected short-link domain.</p>' +
                     '<button onclick="window.close()" style="margin-top:8px;padding:10px 18px;background:#6c63ff;border:0;border-radius:10px;color:white;cursor:pointer">Close</button>' +
-                    '</div><script>(function(){function p(n){return String(n).padStart(2,'0')}function localVal(d){return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}document.addEventListener('DOMContentLoaded',function(){var o=document.getElementById('maintenanceTimezoneOffset');if(o)o.value=String(new Date().getTimezoneOffset());var c=document.getElementById('maintenanceCurrentAuto'),i=document.getElementById('maintenanceUntilInput');if(c&&c.dataset.utc){var d=new Date(c.dataset.utc);if(!isNaN(d.getTime())){c.textContent=d.toLocaleString();if(i)i.value=localVal(d)}}})})();</script>
-</body></html>'
+                    '</div></body></html>'
                 );
                 win.document.close();
             } catch (e) {
@@ -5998,6 +6006,33 @@ textarea::placeholder{
 
     if(target && 'ResizeObserver' in window){
       new ResizeObserver(scheduleFit).observe(target);
+    }
+  });
+})();
+</script>
+
+
+<script id="maintenanceTimerAdminHelper">
+(function(){
+  function pad2(n){return String(n).padStart(2,'0');}
+  function localValue(d){
+    return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+
+      'T'+pad2(d.getHours())+':'+pad2(d.getMinutes());
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    var offset=document.getElementById('maintenanceTimezoneOffset');
+    if(offset) offset.value=String(new Date().getTimezoneOffset());
+
+    var current=document.getElementById('maintenanceCurrentAuto');
+    var input=document.getElementById('maintenanceUntilInput');
+
+    if(current && current.dataset.utc){
+      var d=new Date(current.dataset.utc);
+      if(!isNaN(d.getTime())){
+        current.textContent=d.toLocaleString();
+        if(input) input.value=localValue(d);
+      }
     }
   });
 })();
