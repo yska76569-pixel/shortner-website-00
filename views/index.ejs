@@ -2980,6 +2980,10 @@ textarea::placeholder{
         .maintenance-field-help,.maintenance-current-auto{display:block;margin-top:.35rem;color:#8193B6;font-size:.62rem;line-height:1.45}
         .maintenance-current-auto{color:#8CFFD1}
 
+
+        .maintenance-current-schedule{padding:.7rem .8rem;border-radius:12px;background:rgba(51,230,161,.055);border:1px solid rgba(51,230,161,.13);color:#8CFFD1;font-weight:700}
+        .maintenance-current-schedule small{display:block;margin-top:.35rem;color:#9BB0D3;font-size:.64rem}
+
 </style>
 </head>
 <body>
@@ -4788,16 +4792,60 @@ textarea::placeholder{
             <div class="glass-card site-maintenance-admin-card" style="margin-bottom:1.5rem;">
                 <div class="maintenance-admin-head"><div><div class="dashboard-kicker">GLOBAL CONTROL</div><h2>🛠 Website Maintenance Mode</h2><p>When ON, the public website, user pages, API and every short-link redirect are paused. Admin Panel and /health stay available. Nothing is deleted.</p></div><span class="maintenance-status-pill <%= siteMaintenanceOn?'on':'off' %>"><%= siteMaintenanceOn?'MAINTENANCE ON':'WEBSITE LIVE' %></span></div>
                 <form method="POST" action="/admin/site-maintenance/settings" class="maintenance-details-form" id="maintenanceSettingsForm">
-                    <div class="form-group"><label>Maintenance Message (optional)</label><textarea class="form-control" name="maintenanceMessage" maxlength="500" rows="3" placeholder="Example: We are upgrading our redirect servers."><%= maintenanceMessage || '' %></textarea></div>
-                    <div class="form-group"><label>Expected Restore Time (optional)</label><input class="form-control" name="maintenanceEta" maxlength="160" value="<%= maintenanceEta || '' %>" placeholder="Example: Within 1 hour / 10:30 PM"></div>
                     <div class="form-group">
-                        <label>Auto Resume Date & Time (optional)</label>
+                        <label>Maintenance Message (optional)</label>
+                        <textarea class="form-control" name="maintenanceMessage" maxlength="500" rows="3" placeholder="Example: We are upgrading our redirect servers."><%= maintenanceMessage || '' %></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Expected Restore Text (optional)</label>
+                        <input class="form-control" name="maintenanceEta" maxlength="160" value="<%= maintenanceEta || '' %>" placeholder="Example: Within 1 hour">
+                    </div>
+
+                    <div class="form-group maintenance-resume-mode">
+                        <label>Auto Resume Mode</label>
+                        <select class="form-control" name="resumeMode" id="maintenanceResumeMode">
+                            <option value="manual">Manual OFF only</option>
+                            <option value="duration">Auto Resume After (recommended)</option>
+                            <option value="exact">Exact Date & Time</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="maintenanceDurationGroup" style="display:none;">
+                        <label>Auto Resume After</label>
+                        <select class="form-control" name="resumePreset" id="maintenanceResumePreset">
+                            <option value="30m">30 Minutes</option>
+                            <option value="1h">1 Hour</option>
+                            <option value="2h">2 Hours</option>
+                            <option value="6h">6 Hours</option>
+                            <option value="12h">12 Hours</option>
+                            <option value="24h">24 Hours</option>
+                            <option value="custom">Custom Minutes</option>
+                        </select>
+                        <input class="form-control" type="number" name="customMinutes" id="maintenanceCustomMinutes" min="1" max="10080" placeholder="Custom minutes (1–10080)" style="display:none;margin-top:.45rem;">
+                        <small class="maintenance-field-help">Timezone-safe. Server will use current time + selected duration.</small>
+                    </div>
+
+                    <div class="form-group" id="maintenanceExactGroup" style="display:none;">
+                        <label>Exact Auto Resume Date & Time</label>
                         <input class="form-control" type="datetime-local" name="maintenanceUntil" id="maintenanceUntilInput">
                         <input type="hidden" name="timezoneOffset" id="maintenanceTimezoneOffset">
-                        <small class="maintenance-field-help">Set a time only if you want automatic resume. Leave blank for manual OFF.</small>
-                        <% if(maintenanceUntil){ %><small class="maintenance-current-auto">Current auto-resume: <span id="maintenanceCurrentAuto" data-utc="<%= maintenanceUntil %>"></span></small><% } %>
+                        <small class="maintenance-field-help">Use this only if you need an exact clock time.</small>
                     </div>
-                    <button class="btn btn-secondary" type="submit"><i class="fas fa-floppy-disk"></i> Save Maintenance Page Details</button>
+
+                    <% if(maintenanceUntil){ %>
+                    <div class="form-group">
+                        <label>Current Scheduled Resume</label>
+                        <div class="maintenance-current-schedule">
+                            <span id="maintenanceCurrentAuto" data-utc="<%= maintenanceUntil %>"></span>
+                            <small id="maintenanceCurrentLeft"></small>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <button class="btn btn-secondary" type="submit">
+                        <i class="fas fa-floppy-disk"></i> Save Maintenance Settings
+                    </button>
                 </form>
                 <div class="maintenance-toggle-row">
                     <form method="POST" action="/admin/site-maintenance/toggle" onsubmit="return confirm('<%= siteMaintenanceOn?'Turn maintenance OFF and restore the website?':'Turn maintenance ON? Public pages, API and all short links will pause.' %>')"><button class="btn <%= siteMaintenanceOn?'btn-primary':'btn-warning' %>" type="submit"><i class="fas <%= siteMaintenanceOn?'fa-play':'fa-screwdriver-wrench' %>"></i> <%= siteMaintenanceOn?'Turn Maintenance OFF — Resume Website':'Turn Maintenance ON — Pause Website' %></button></form>
@@ -6015,23 +6063,69 @@ textarea::placeholder{
 <script id="maintenanceTimerAdminHelper">
 (function(){
   function pad2(n){return String(n).padStart(2,'0');}
-  function localValue(d){
+
+  function toLocalInputValue(d){
     return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+
       'T'+pad2(d.getHours())+':'+pad2(d.getMinutes());
+  }
+
+  function updateResumeFields(){
+    var mode=document.getElementById('maintenanceResumeMode');
+    var duration=document.getElementById('maintenanceDurationGroup');
+    var exact=document.getElementById('maintenanceExactGroup');
+    if(!mode)return;
+
+    if(duration) duration.style.display=mode.value==='duration'?'block':'none';
+    if(exact) exact.style.display=mode.value==='exact'?'block':'none';
+  }
+
+  function updateCustomMinutes(){
+    var preset=document.getElementById('maintenanceResumePreset');
+    var custom=document.getElementById('maintenanceCustomMinutes');
+    if(!preset || !custom)return;
+    custom.style.display=preset.value==='custom'?'block':'none';
+    if(preset.value!=='custom') custom.value='';
+  }
+
+  function formatLeft(ms){
+    if(ms<=0)return '00:00:00';
+    var total=Math.floor(ms/1000);
+    var days=Math.floor(total/86400);
+    var hours=Math.floor((total%86400)/3600);
+    var mins=Math.floor((total%3600)/60);
+    var secs=total%60;
+    return (days>0?days+'d ':'')+pad2(hours)+':'+pad2(mins)+':'+pad2(secs);
   }
 
   document.addEventListener('DOMContentLoaded',function(){
     var offset=document.getElementById('maintenanceTimezoneOffset');
     if(offset) offset.value=String(new Date().getTimezoneOffset());
 
+    var mode=document.getElementById('maintenanceResumeMode');
+    var preset=document.getElementById('maintenanceResumePreset');
+    if(mode) mode.addEventListener('change',updateResumeFields);
+    if(preset) preset.addEventListener('change',updateCustomMinutes);
+
+    updateResumeFields();
+    updateCustomMinutes();
+
     var current=document.getElementById('maintenanceCurrentAuto');
-    var input=document.getElementById('maintenanceUntilInput');
+    var left=document.getElementById('maintenanceCurrentLeft');
+    var exactInput=document.getElementById('maintenanceUntilInput');
 
     if(current && current.dataset.utc){
       var d=new Date(current.dataset.utc);
+
       if(!isNaN(d.getTime())){
         current.textContent=d.toLocaleString();
-        if(input) input.value=localValue(d);
+        if(exactInput) exactInput.value=toLocalInputValue(d);
+
+        function tick(){
+          if(left) left.textContent='Time left: '+formatLeft(d.getTime()-Date.now());
+        }
+
+        tick();
+        setInterval(tick,1000);
       }
     }
   });
