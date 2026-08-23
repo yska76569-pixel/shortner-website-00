@@ -143,6 +143,21 @@ app.use(session({
   }
 }));
 
+app.use(async(req,res,next)=>{
+  try{
+    const p=String(req.path||'/');
+    if(p==='/health' || p==='/favicon.ico' || p.startsWith('/admin')) return next();
+    if(!(await isSiteMaintenanceOn())) return next();
+    res.set('Cache-Control','no-store, no-cache, must-revalidate');
+    if(p.startsWith('/api/')) return res.status(503).json({error:'Website under maintenance',maintenance:true});
+    return res.status(503).send(maintenanceHtml());
+  }catch(e){
+    console.error('Maintenance middleware error:',e.message);
+    next();
+  }
+});
+
+
 async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -257,6 +272,36 @@ async function initDatabase() {
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_enabled BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE links ADD COLUMN IF NOT EXISTS link_type TEXT NOT NULL DEFAULT 'standard';
 
+    CREATE TABLE IF NOT EXISTS redeem_codes (
+      id BIGSERIAL PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      premium_days INTEGER NOT NULL CHECK (premium_days > 0),
+      max_uses INTEGER NOT NULL CHECK (max_uses > 0),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS redeem_code_uses (
+      id BIGSERIAL PRIMARY KEY,
+      redeem_code_id BIGINT NOT NULL REFERENCES redeem_codes(id) ON DELETE CASCADE,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      redeemed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(redeem_code_id,user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_redeem_code_uses_code ON redeem_code_uses(redeem_code_id);
+    CREATE INDEX IF NOT EXISTS idx_redeem_code_uses_user ON redeem_code_uses(user_id);
+
+    CREATE TABLE IF NOT EXISTS site_settings (
+      setting_key TEXT PRIMARY KEY,
+      setting_value TEXT NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_by TEXT NOT NULL DEFAULT ''
+    );
+    INSERT INTO site_settings(setting_key,setting_value)
+    VALUES('maintenance_mode','off')
+    ON CONFLICT(setting_key) DO NOTHING;
+
     CREATE TABLE IF NOT EXISTS notifications (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -318,8 +363,28 @@ async function initDatabase() {
     await pool.query(`INSERT INTO domain_settings(domain,enabled,maintenance)
       VALUES($1,TRUE,FALSE) ON CONFLICT(domain) DO NOTHING`, [normalizeHost(domain)]);
   }
-  console.log('✅ Full app database tables ready: users, links, clicks, online_users, payments, api, notifications, audit, domains, backups');
+  console.log('✅ Full app database tables ready: users, links, clicks, online_users, payments, api, notifications, audit, domains, backups, redeem, settings');
   console.log(`🌍 Geo detection: Cloudflare headers + real forwarded IP + geoip-lite${IPINFO_TOKEN ? ' + IPinfo' : ''}`);
+}
+
+
+let maintenanceCache={value:false,at:0};
+async function isSiteMaintenanceOn(force=false){
+  const now=Date.now();
+  if(!force && now-maintenanceCache.at<2000) return maintenanceCache.value;
+  try{
+    const q=await pool.query("SELECT setting_value FROM site_settings WHERE setting_key='maintenance_mode' LIMIT 1");
+    const value=!!q.rowCount && String(q.rows[0].setting_value||'').toLowerCase()==='on';
+    maintenanceCache={value,at:now};
+    return value;
+  }catch(e){
+    console.error('Maintenance state read error:',e.message);
+    return false;
+  }
+}
+function maintenanceHtml(){
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="15"><title>Website Under Maintenance</title><style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;font-family:Inter,Arial,sans-serif;color:#eef4ff;background:radial-gradient(circle at 20% 20%,rgba(108,99,255,.22),transparent 32%),radial-gradient(circle at 80% 80%,rgba(39,215,255,.12),transparent 34%),#070d1f}.card{width:min(620px,100%);padding:34px 26px;border-radius:26px;text-align:center;background:rgba(18,28,58,.92);border:1px solid rgba(140,160,255,.22);box-shadow:0 30px 90px rgba(0,0,0,.48)}.icon{font-size:52px}.brand{margin:12px 0 4px;font-weight:900;letter-spacing:.02em;color:#9fe9ff}.card h1{font-size:clamp(28px,6vw,46px);margin:10px 0}.card p{color:#aebbd5;line-height:1.7;margin:10px auto;max-width:500px}.pill{display:inline-flex;gap:8px;align-items:center;margin-top:16px;padding:9px 14px;border-radius:999px;color:#ffe59a;background:rgba(255,205,80,.08);border:1px solid rgba(255,205,80,.18);font-weight:800;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#ffd45c;box-shadow:0 0 14px #ffd45c;animation:p 1.3s infinite}@keyframes p{50%{opacity:.35}}small{display:block;margin-top:18px;color:#7181a3}</style></head><body><main class="card"><div class="icon">🛠️</div><div class="brand">THIS PERSON IS BRAND SHORTLINK</div><h1>Website Under Maintenance</h1><p>We are currently performing maintenance and improvements. The website, API and all short links are temporarily paused. Nothing has been deleted.</p><p>Service will resume automatically as soon as maintenance is completed.</p><div class="pill"><span class="dot"></span> Maintenance in progress</div><small>This page checks again automatically every 15 seconds.</small></main></body></html>`;
 }
 
 function toIso(v) { return v ? new Date(v).toISOString() : null; }
@@ -1682,6 +1747,43 @@ async function renderStaticPage(req,res,page){
 }
 
 
+
+// ===== REDEEM CODE =====
+app.get('/redeem',authMiddleware,async(req,res)=>{
+  try{
+    const freshUser=await getUserById(req.user.id);
+    const active=await getActiveOnlineUsers();
+    const history=await pool.query(`SELECT r.code,r.premium_days,u.redeemed_at FROM redeem_code_uses u JOIN redeem_codes r ON r.id=u.redeem_code_id WHERE u.user_id=$1 ORDER BY u.redeemed_at DESC LIMIT 20`,[req.user.id]);
+    res.render('index',{page:'redeem',user:freshUser,redeemHistory:history.rows,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL});
+  }catch(e){console.error('Redeem page error:',e);res.redirect('/dashboard?error='+encodeURIComponent('Could not load redeem page'));}
+});
+
+app.post('/redeem',authMiddleware,async(req,res)=>{
+  const code=String(req.body.code||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(!code) return res.redirect('/redeem?error='+encodeURIComponent('Enter a redeem code'));
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const codeR=await client.query('SELECT * FROM redeem_codes WHERE UPPER(code)=UPPER($1) FOR UPDATE',[code]);
+    if(!codeR.rowCount) throw new Error('INVALID_CODE');
+    const redeem=codeR.rows[0];
+    if(!redeem.is_active) throw new Error('CODE_DISABLED');
+    const used=await client.query('SELECT 1 FROM redeem_code_uses WHERE redeem_code_id=$1 AND user_id=$2 LIMIT 1',[redeem.id,req.user.id]);
+    if(used.rowCount) throw new Error('ALREADY_USED');
+    const countR=await client.query('SELECT COUNT(*)::int AS count FROM redeem_code_uses WHERE redeem_code_id=$1',[redeem.id]);
+    if(Number(countR.rows[0].count)>=Number(redeem.max_uses)) throw new Error('CODE_FULL');
+    await client.query(`UPDATE users SET plan_type='premium',premium_until=GREATEST(COALESCE(premium_until,NOW()),NOW()) + ($1 || ' days')::interval WHERE id=$2`,[Number(redeem.premium_days),req.user.id]);
+    await client.query('INSERT INTO redeem_code_uses(redeem_code_id,user_id) VALUES($1,$2)',[redeem.id,req.user.id]);
+    await client.query('COMMIT');
+    await notifyUser(req.user.id,'Redeem successful',`Your Premium plan was extended by ${Number(redeem.premium_days)} day(s).`,'success');
+    res.redirect('/redeem?success='+encodeURIComponent(`Redeemed successfully! Premium added for ${Number(redeem.premium_days)} day(s).`));
+  }catch(e){
+    try{await client.query('ROLLBACK');}catch(_){}
+    const msg={INVALID_CODE:'Invalid redeem code.',CODE_DISABLED:'This redeem code is disabled.',ALREADY_USED:'You already used this redeem code.',CODE_FULL:'This redeem code has reached its maximum user limit.'}[e.message]||'Redeem failed. Please try again.';
+    res.redirect('/redeem?error='+encodeURIComponent(msg));
+  }finally{client.release();}
+});
+
 // ===== PLANS / MANUAL PAYMENT =====
 app.get('/plans', authMiddleware, async (req,res)=>{
   try {
@@ -1752,9 +1854,38 @@ app.post('/admin/login', async (req,res)=>{
 });
 app.post('/admin/logout', (req,res)=>{ delete req.session.admin; req.session.save(()=>res.redirect('/admin/login')); });
 
+
+app.post('/admin/redeem-codes/create',adminMiddleware,async(req,res)=>{
+  try{
+    let code=String(req.body.code||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');
+    const premiumDays=Math.max(1,Math.min(3650,Number(req.body.premiumDays||30)));
+    const maxUses=Math.max(1,Math.min(100000,Number(req.body.maxUses||1)));
+    if(!code) code='TPIB-'+crypto.randomBytes(5).toString('hex').toUpperCase();
+    if(code.length<4 || code.length>64) return res.redirect('/admin?error='+encodeURIComponent('Redeem code must be 4-64 characters.'));
+    await pool.query('INSERT INTO redeem_codes(code,premium_days,max_uses,created_by) VALUES($1,$2,$3,$4)',[code,premiumDays,maxUses,ADMIN_EMAIL||'admin']);
+    await auditAdmin(req,'redeem_code_create','redeem_code',code,`premium_days=${premiumDays};max_uses=${maxUses}`);
+    res.redirect('/admin?success='+encodeURIComponent(`Redeem code created: ${code}`));
+  }catch(e){res.redirect('/admin?error='+encodeURIComponent(e.code==='23505'?'That redeem code already exists.':'Could not create redeem code.'));}
+});
+app.post('/admin/redeem-codes/:id/toggle',adminMiddleware,async(req,res)=>{
+  try{const id=Number(req.params.id);const q=await pool.query('UPDATE redeem_codes SET is_active=NOT is_active WHERE id=$1 RETURNING code,is_active',[id]);if(!q.rowCount)return res.redirect('/admin?error='+encodeURIComponent('Redeem code not found'));await auditAdmin(req,'redeem_code_toggle','redeem_code',id,`active=${q.rows[0].is_active}`);res.redirect('/admin?success='+encodeURIComponent(q.rows[0].is_active?'Redeem code enabled':'Redeem code disabled'));}catch(e){res.redirect('/admin?error='+encodeURIComponent('Could not update redeem code'));}
+});
+app.post('/admin/redeem-codes/:id/delete',adminMiddleware,async(req,res)=>{
+  try{const id=Number(req.params.id);const q=await pool.query('DELETE FROM redeem_codes WHERE id=$1 RETURNING code',[id]);if(!q.rowCount)return res.redirect('/admin?error='+encodeURIComponent('Redeem code not found'));await auditAdmin(req,'redeem_code_delete','redeem_code',id,`code=${q.rows[0].code}`);res.redirect('/admin?success='+encodeURIComponent('Redeem code deleted'));}catch(e){res.redirect('/admin?error='+encodeURIComponent('Could not delete redeem code'));}
+});
+app.post('/admin/site-maintenance/toggle',adminMiddleware,async(req,res)=>{
+  try{
+    const current=await isSiteMaintenanceOn(true),next=!current;
+    await pool.query(`INSERT INTO site_settings(setting_key,setting_value,updated_at,updated_by) VALUES('maintenance_mode',$1,NOW(),$2) ON CONFLICT(setting_key) DO UPDATE SET setting_value=EXCLUDED.setting_value,updated_at=NOW(),updated_by=EXCLUDED.updated_by`,[next?'on':'off',ADMIN_EMAIL||'admin']);
+    maintenanceCache={value:next,at:Date.now()};
+    await auditAdmin(req,'site_maintenance','site','global',`maintenance=${next?'on':'off'}`);
+    res.redirect('/admin?success='+encodeURIComponent(next?'Website maintenance mode is ON. All public services and short links are paused.':'Website maintenance mode is OFF. Website and short links are live again.'));
+  }catch(e){console.error('Maintenance toggle error:',e);res.redirect('/admin?error='+encodeURIComponent('Could not change maintenance mode'));}
+});
+
 app.get('/admin', adminMiddleware, async (req,res)=>{
   try {
-    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR,topCountriesR,topUserCountriesR,userRealStatsR] = await Promise.all([
+    const [usersR,linksR,payR,active,totalClicksR,botClicksR,auditR,domainsR,backupsR,announcementsR,topCountriesR,topUserCountriesR,userRealStatsR,redeemCodesR,maintenanceR] = await Promise.all([
       pool.query('SELECT * FROM users ORDER BY created_at DESC LIMIT 500'),
       pool.query(`SELECT l.*,u.display_name,u.username FROM links l JOIN users u ON u.id=l.user_id ORDER BY l.created_at DESC LIMIT 500`),
       pool.query(`SELECT p.*,u.display_name,u.username,u.email FROM payments p JOIN users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 300`),
@@ -1778,7 +1909,9 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
                     COUNT(c.id) FILTER (WHERE c.is_bot=TRUE)::bigint AS bot_clicks,
                     COUNT(DISTINCT c.ip_address) FILTER (WHERE c.is_bot=FALSE AND c.ip_address<>'')::bigint AS unique_visitors
                   FROM users u LEFT JOIN clicks c ON c.user_id=u.id
-                  GROUP BY u.id`)
+                  GROUP BY u.id`),
+      pool.query(`SELECT r.*,COUNT(u.id)::int AS used_count FROM redeem_codes r LEFT JOIN redeem_code_uses u ON u.redeem_code_id=r.id GROUP BY r.id ORDER BY r.created_at DESC LIMIT 200`),
+      pool.query("SELECT setting_value,updated_at,updated_by FROM site_settings WHERE setting_key='maintenance_mode' LIMIT 1")
     ]);
     const userRealMap=new Map(userRealStatsR.rows.map(r=>[Number(r.id),{
       realClicks:Number(r.real_clicks||0),botClicks:Number(r.bot_clicks||0),uniqueVisitors:Number(r.unique_visitors||0)
@@ -1787,6 +1920,7 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
     res.render('index',{page:'admin',user:req.session?.user?.id?await getUserById(req.session.user.id):null,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),countries,
       error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,baseDomain:BASE_HOST,baseUrl:BASE_URL,
       adminUsers:users,adminLinks:linksR.rows,adminPayments:payR.rows,adminAudit:auditR.rows,adminDomains:domainsR.rows,adminBackups:backupsR.rows,adminAnnouncements:announcementsR.rows,adminTopCountries:topCountriesR.rows,adminTopUserCountries:topUserCountriesR.rows,
+      adminRedeemCodes:redeemCodesR.rows,siteMaintenanceOn:!!maintenanceR.rowCount && String(maintenanceR.rows[0].setting_value||'').toLowerCase()==='on',siteMaintenanceUpdated:maintenanceR.rowCount?maintenanceR.rows[0]:null,
       adminStats:{totalUsers:users.length,online:active.length,totalLinks:linksR.rows.length,totalClicks:Number(totalClicksR.rows[0].count),botClicks:Number(botClicksR.rows[0].count),pendingPayments:payR.rows.filter(p=>p.status==='pending').length},
       freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
     });
