@@ -2984,6 +2984,7 @@ textarea::placeholder{
         .maintenance-current-schedule{padding:.7rem .8rem;border-radius:12px;background:rgba(51,230,161,.055);border:1px solid rgba(51,230,161,.13);color:#8CFFD1;font-weight:700}
         .maintenance-current-schedule small{display:block;margin-top:.35rem;color:#9BB0D3;font-size:.64rem}
 
+.x-twitter{font-weight:900}
 </style>
 </head>
 <body>
@@ -3129,6 +3130,8 @@ textarea::placeholder{
                     <a class="<%= page === 'shorten' ? 'active' : '' %>" href="/shorten-page"><i class="fas fa-plus"></i><span>Create Link</span></a>
                     <a class="<%= page === 'my-links' ? 'active' : '' %>" href="/my-links"><i class="fas fa-link"></i><span>My Short Links</span></a>
                     <a class="<%= page === 'google-shortlink' ? 'active' : '' %>" href="/google-shortlink"><i class="fab fa-google"></i><span>Google Shortlink</span></a>
+                    <a class="<%= page === 'x-shortlink' ? 'active' : '' %>" href="/x-shortlink"><i class="fa-brands fa-x-twitter"></i><span>X Shortlink</span></a>
+                    <a class="<%= page === 'canva-shortlink' ? 'active' : '' %>" href="/canva-shortlink"><i class="fas fa-palette"></i><span>Canva Shortlink</span></a>
                     <a class="<%= page === 'api-access' ? 'active' : '' %>" href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                     <a class="<%= page === 'notifications' ? 'active' : '' %>" href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
                     <a class="<%= page === 'plans' ? 'active' : '' %>" href="/plans"><i class="fas fa-crown"></i><span>Plans & Payment</span></a>
@@ -3395,6 +3398,8 @@ textarea::placeholder{
                         <a class="active" href="/dashboard"><i class="fas fa-chart-pie"></i><span>Overview</span></a>
                         <button type="button" onclick="openCreateLinkModal()"><i class="fas fa-plus"></i><span>Create Link</span></button>
                         <a href="/my-links"><i class="fas fa-link"></i><span>My Short Links</span></a>
+                        <a href="/x-shortlink"><i class="fa-brands fa-x-twitter"></i><span>X Shortlink</span></a>
+                        <a href="/canva-shortlink"><i class="fas fa-palette"></i><span>Canva Shortlink</span></a>
                         <a href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                         <a href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
                         <a href="/plans"><i class="fas fa-crown"></i><span>Plans</span></a>
@@ -3992,6 +3997,12 @@ textarea::placeholder{
     </div>
   </div>
 <% } %>
+
+
+<!-- ===== X SHORTLINK PAGE ===== -->
+<% if(page==='x-shortlink'){ %><div class="fade-in google-shortlink-page"><div class="brand-center"><div class="google-tool-icon" style="background:#111;">𝕏</div><h1>X Shortlink</h1><p>Publish the URL with the Admin-connected official X account and receive the real Post URL.</p></div><div class="glass-card google-style-card"><% if(!xConfigured){ %><div class="google-api-note"><i class="fas fa-triangle-exclamation"></i><span>X API is not configured. Ask Admin to connect the official API.</span></div><% } else if(!xConnected){ %><div class="google-api-note"><i class="fas fa-link"></i><span>X API is ready, but no X account is connected yet.</span></div><% } else { %><div class="google-step"><span>𝕏</span><div><strong>Connected Account</strong><small>@<%= xUsername %></small></div></div><form method="POST" action="/x-shortlink/post"><div class="form-group"><label>Destination URL</label><input class="form-control" type="url" name="originalUrl" required value="<%= xOriginal||'' %>" placeholder="https://example.com"></div><div class="form-group"><label>Optional Post Text</label><textarea class="form-control" rows="3" name="postText" maxlength="220"></textarea></div><button class="btn btn-primary google-convert-btn"><i class="fa-brands fa-x-twitter"></i> Publish & Generate X URL</button></form><% if(xOutput){ %><div class="google-output-box" style="margin-top:1rem;"><div class="output-label">X Post URL</div><div class="output-url"><code id="xOutput"><%= xOutput %></code><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('xOutput').innerText);showToast('Copied','success')"><i class="fas fa-copy"></i></button></div></div><% } %><% } %></div></div><% } %>
+<!-- ===== CANVA SHORTLINK PAGE ===== -->
+<% if(page==='canva-shortlink'){ %><div class="fade-in google-shortlink-page"><div class="brand-center"><div class="google-tool-icon" style="background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b);"><i class="fas fa-palette"></i></div><h1>Canva Shortlink</h1><p>Shorten Canva share/design URLs using your own premium domains.</p></div><div class="glass-card google-style-card"><form method="POST" action="/canva-shortlink/create"><div class="form-group"><label>Canva URL</label><input class="form-control" type="url" name="originalUrl" required value="<%= canvaOriginal||'' %>" placeholder="https://www.canva.com/design/..."></div><div class="google-domain-grid"><div class="form-group"><label>Short Domain</label><select class="form-control" name="domain"><% (domainChoices||[]).forEach(function(d){ %><option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance':' — Unavailable')) %></option><% }); %></select></div><div class="form-group"><label>Custom Code</label><input class="form-control" name="customSlug" placeholder="Optional"></div></div><button class="btn btn-primary google-convert-btn"><i class="fas fa-palette"></i> Create Canva Shortlink</button></form><% if(shortUrl){ %><div class="google-output-box" style="margin-top:1rem;"><div class="output-label">Short Link</div><div class="output-url"><code id="canvaOut"><%= shortUrl %></code><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('canvaOut').innerText);showToast('Copied','success')"><i class="fas fa-copy"></i></button></div></div><% } %><div class="google-api-note"><i class="fas fa-circle-info"></i><span>This creates your own-domain short link for Canva URLs. It is not a Canva-owned generated URL.</span></div></div></div><% } %>
 
 <!-- ===== GOOGLE SHORTLINK PAGE ===== -->
         <% if (page === 'google-shortlink') { %>
@@ -4789,7 +4800,15 @@ textarea::placeholder{
 
 
 
-            <div class="glass-card site-maintenance-admin-card" style="margin-bottom:1.5rem;">
+            <div class="glass-card" style="margin-bottom:1.5rem;">
+  <div class="maintenance-admin-head"><div><div class="dashboard-kicker">OFFICIAL X API</div><h2>𝕏 X Account Connection</h2><p>Connect one X account with OAuth. No password is stored.</p></div></div>
+  <div class="maintenance-toggle-row">
+    <a class="btn btn-primary" href="/admin/x-connect"><i class="fa-brands fa-x-twitter"></i> Connect Official X Account</a>
+    <form method="POST" action="/admin/x-disconnect" onsubmit="return confirm('Disconnect X account?')"><button class="btn btn-danger" type="submit"><i class="fas fa-unlink"></i> Disconnect X</button></form>
+  </div>
+  <small class="maintenance-last-change">Railway Variables required: X_CLIENT_ID, X_CLIENT_SECRET, X_REDIRECT_URI</small>
+</div>
+<div class="glass-card site-maintenance-admin-card" style="margin-bottom:1.5rem;">
                 <div class="maintenance-admin-head"><div><div class="dashboard-kicker">GLOBAL CONTROL</div><h2>🛠 Website Maintenance Mode</h2><p>When ON, the public website, user pages, API and every short-link redirect are paused. Admin Panel and /health stay available. Nothing is deleted.</p></div><span class="maintenance-status-pill <%= siteMaintenanceOn?'on':'off' %>"><%= siteMaintenanceOn?'MAINTENANCE ON':'WEBSITE LIVE' %></span></div>
                 <form method="POST" action="/admin/site-maintenance/settings" class="maintenance-details-form" id="maintenanceSettingsForm">
                     <div class="form-group">
