@@ -2985,6 +2985,16 @@ textarea::placeholder{
         .maintenance-current-schedule small{display:block;margin-top:.35rem;color:#9BB0D3;font-size:.64rem}
 
 .x-twitter{font-weight:900}
+
+.sidebar-x-logo{width:16px;min-width:16px;height:16px;display:inline-grid;place-items:center;font-size:.82rem;font-weight:950;line-height:1}
+.button-x-logo{font-weight:950;font-size:.95rem}
+.tool-maintenance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+.tool-maintenance-item{padding:1rem;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.tool-maintenance-title{display:flex;align-items:center;gap:.7rem;min-width:210px;flex:1}.tool-maintenance-title strong{display:block}.tool-maintenance-title small{display:block;margin-top:.2rem;color:#8FA1C1;font-size:.64rem}
+.x-mini-logo,.canva-mini-logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:950;font-size:1.15rem;color:#fff;background:#090909;border:1px solid rgba(255,255,255,.12)}
+.canva-mini-logo{background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b)}
+@media(max-width:800px){.tool-maintenance-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -3130,7 +3140,7 @@ textarea::placeholder{
                     <a class="<%= page === 'shorten' ? 'active' : '' %>" href="/shorten-page"><i class="fas fa-plus"></i><span>Create Link</span></a>
                     <a class="<%= page === 'my-links' ? 'active' : '' %>" href="/my-links"><i class="fas fa-link"></i><span>My Short Links</span></a>
                     <a class="<%= page === 'google-shortlink' ? 'active' : '' %>" href="/google-shortlink"><i class="fab fa-google"></i><span>Google Shortlink</span></a>
-                    <a class="<%= page === 'x-shortlink' ? 'active' : '' %>" href="/x-shortlink"><i class="fa-brands fa-x-twitter"></i><span>X Shortlink</span></a>
+                    <a class="<%= page === 'x-shortlink' ? 'active' : '' %>" href="/x-shortlink"><span class="sidebar-x-logo">𝕏</span><span>X Shortlink</span></a>
                     <a class="<%= page === 'canva-shortlink' ? 'active' : '' %>" href="/canva-shortlink"><i class="fas fa-palette"></i><span>Canva Shortlink</span></a>
                     <a class="<%= page === 'api-access' ? 'active' : '' %>" href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                     <a class="<%= page === 'notifications' ? 'active' : '' %>" href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
@@ -3398,7 +3408,7 @@ textarea::placeholder{
                         <a class="active" href="/dashboard"><i class="fas fa-chart-pie"></i><span>Overview</span></a>
                         <button type="button" onclick="openCreateLinkModal()"><i class="fas fa-plus"></i><span>Create Link</span></button>
                         <a href="/my-links"><i class="fas fa-link"></i><span>My Short Links</span></a>
-                        <a href="/x-shortlink"><i class="fa-brands fa-x-twitter"></i><span>X Shortlink</span></a>
+                        <a href="/x-shortlink"><span class="sidebar-x-logo">𝕏</span><span>X Shortlink</span></a>
                         <a href="/canva-shortlink"><i class="fas fa-palette"></i><span>Canva Shortlink</span></a>
                         <a href="/api-access"><i class="fas fa-code"></i><span>API Access</span><span class="side-tag">PRO</span></a>
                         <a href="/notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
@@ -4800,7 +4810,24 @@ textarea::placeholder{
 
 
 
-            <div class="glass-card" style="margin-bottom:1.5rem;">
+            
+<div class="glass-card tool-maintenance-card" style="margin-bottom:1.5rem;">
+  <div class="maintenance-admin-head"><div><div class="dashboard-kicker">INDIVIDUAL TOOL CONTROL</div><h2>🧰 X & Canva Tool Maintenance</h2><p>Pause only X Shortlink or Canva Shortlink. The rest of the website stays online.</p></div></div>
+  <div class="tool-maintenance-grid">
+    <div class="tool-maintenance-item">
+      <div class="tool-maintenance-title"><span class="x-mini-logo">𝕏</span><div><strong>X Shortlink</strong><small>Official X API posting tool</small></div></div>
+      <span class="maintenance-status-pill <%= xToolMaintenance?'on':'off' %>"><%= xToolMaintenance?'MAINTENANCE ON':'RUNNING' %></span>
+      <form method="POST" action="/admin/tool-maintenance/x/toggle"><button class="btn <%= xToolMaintenance?'btn-primary':'btn-warning' %>"><%= xToolMaintenance?'Resume X Tool':'Maintain X Tool' %></button></form>
+    </div>
+    <div class="tool-maintenance-item">
+      <div class="tool-maintenance-title"><span class="canva-mini-logo">C</span><div><strong>Canva Shortlink</strong><small>Canva URL shortener tool</small></div></div>
+      <span class="maintenance-status-pill <%= canvaToolMaintenance?'on':'off' %>"><%= canvaToolMaintenance?'MAINTENANCE ON':'RUNNING' %></span>
+      <form method="POST" action="/admin/tool-maintenance/canva/toggle"><button class="btn <%= canvaToolMaintenance?'btn-primary':'btn-warning' %>"><%= canvaToolMaintenance?'Resume Canva Tool':'Maintain Canva Tool' %></button></form>
+    </div>
+  </div>
+</div>
+
+<div class="glass-card" style="margin-bottom:1.5rem;">
   <div class="maintenance-admin-head"><div><div class="dashboard-kicker">OFFICIAL X API</div><h2>𝕏 X Account Connection</h2><p>Connect one X account with OAuth. No password is stored.</p></div></div>
   <div class="maintenance-toggle-row">
     <a class="btn btn-primary" href="/admin/x-connect"><i class="fa-brands fa-x-twitter"></i> Connect Official X Account</a>
