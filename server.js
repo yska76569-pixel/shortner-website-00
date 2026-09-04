@@ -2577,7 +2577,8 @@ async function processRedirectAnalytics(req,row,link){
 
     if(!bot){
       const clickUpdate=await pool.query(
-        'UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *',[link.id]
+        `UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *`,
+        [link.id]
       );
       pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId]).catch(()=>{});
       const fresh=clickUpdate.rowCount?clickUpdate.rows[0]:row;
@@ -2585,18 +2586,29 @@ async function processRedirectAnalytics(req,row,link){
       if(fresh.auto_update_enabled && fresh.auto_update_url && Number(fresh.auto_update_threshold)>0 &&
          (Number(fresh.clicks)-Number(fresh.auto_update_start_clicks||0))>=Number(fresh.auto_update_threshold)){
         const switched=await pool.query(
-          `UPDATE links SET original_url=auto_update_url,auto_update_enabled=FALSE,
-           auto_update_switched_at=NOW(),updated_at=NOW()
-           WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,[link.id]
+          `UPDATE links
+           SET original_url=auto_update_url,
+               auto_update_enabled=FALSE,
+               auto_update_switched_at=NOW(),
+               updated_at=NOW()
+           WHERE id=$1 AND auto_update_enabled=TRUE
+           RETURNING original_url`,
+          [link.id]
         );
+
         if(switched.rowCount){
-          notifyUser(link.userId,'Automatic link update completed',
+          notifyUser(
+            link.userId,
+            'Automatic link update completed',
             `Your short link ${buildShortUrl(link)} reached its click target and the destination was updated automatically.`,
-            'success').catch(()=>{});
+            'success'
+          ).catch(()=>{});
         }
       }
     }
-  }catch(e){ console.error('Background redirect analytics error:',e.message||e); }
+  }catch(e){
+    console.error('Background redirect analytics error:',e.message||e);
+  }
 }
 
 async function handleStoredLinkRedirect(req,res,row){
@@ -2609,6 +2621,7 @@ async function handleStoredLinkRedirect(req,res,row){
     }
 
     const ua=req.headers['user-agent']||'';
+
     if(row.password_enabled && row.password_hash && !isSocialPreviewBot(ua)){
       const unlocked=req.session?.unlockedLinks?.[String(link.id)];
       if(!unlocked || Number(unlocked)<Date.now()){
@@ -2616,7 +2629,8 @@ async function handleStoredLinkRedirect(req,res,row){
         const user=req.session?.user?.id?await getUserById(req.session.user.id):null;
         return res.status(401).render('index',{
           page:'link-password',user,link,unlockError:req.query.unlockError==='1',
-          onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
+          onlineUsers:active.length,
+          onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
           countries,error:null,success:null,info:null,shortUrl:null,
           customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,
           baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)
@@ -2629,7 +2643,7 @@ async function handleStoredLinkRedirect(req,res,row){
       return renderSocialPreview(req,res,link);
     }
 
-    // Ultra-fast visitor path: redirect immediately; analytics continues in background.
+    // Visitor gets the 302 immediately. Click/geo analytics continue in background.
     res.set('Cache-Control','no-store');
     res.redirect(302,link.originalUrl);
     processRedirectAnalytics(req,row,link).catch(()=>{});
