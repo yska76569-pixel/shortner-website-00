@@ -156,6 +156,9 @@ app.use(async(req,res,next)=>{
   try{
     const p=String(req.path||'/');
     if(p==='/health' || p==='/favicon.ico' || p.startsWith('/admin')) return next();
+    // V7.41: the admin website account (ADMIN_EMAIL / is_admin) can use the full site during maintenance.
+    // This lets the admin verify updates before reopening the website for everyone else.
+    if(await getAdminState(req)) return next();
     if(!(await isSiteMaintenanceOn())) return next();
     res.set('Cache-Control','no-store, no-cache, must-revalidate');
     if(p.startsWith('/api/')) return res.status(503).json({error:'Website under maintenance',maintenance:true});
@@ -281,6 +284,11 @@ async function initDatabase() {
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE links ADD COLUMN IF NOT EXISTS password_enabled BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE links ADD COLUMN IF NOT EXISTS link_type TEXT NOT NULL DEFAULT 'standard';
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS auto_update_url TEXT;
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS auto_update_threshold INTEGER;
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS auto_update_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS auto_update_start_clicks BIGINT NOT NULL DEFAULT 0;
+    ALTER TABLE links ADD COLUMN IF NOT EXISTS auto_update_switched_at TIMESTAMPTZ;
 
     CREATE TABLE IF NOT EXISTS redeem_codes (
       id BIGSERIAL PRIMARY KEY,
@@ -568,7 +576,10 @@ function mapLink(r) {
     originalUrl: r.original_url, shortCode: r.short_code, customSlug: r.custom_slug,
     title: r.title || '', clicks: Number(r.clicks || 0), isActive: !!r.is_active,
     isExpired: !!r.is_expired, expiresAt: toIso(r.expires_at), createdAt: toIso(r.created_at), updatedAt: toIso(r.updated_at),
-    passwordEnabled: !!r.password_enabled, linkType: r.link_type || 'standard'
+    passwordEnabled: !!r.password_enabled, linkType: r.link_type || 'standard',
+    autoUpdateUrl: r.auto_update_url || '', autoUpdateThreshold: Number(r.auto_update_threshold || 0),
+    autoUpdateEnabled: !!r.auto_update_enabled, autoUpdateStartClicks: Number(r.auto_update_start_clicks || 0),
+    autoUpdateSwitchedAt: toIso(r.auto_update_switched_at)
   };
 }
 function mapClick(r) {
@@ -1398,13 +1409,13 @@ function isCanvaUrl(v){try{const u=new URL(v);const host=u.hostname.toLowerCase(
 async function createToolLink(userId,originalUrl,domain,customSlug,type){let c;try{const d=normalizeHost(domain||BASE_HOST);if(!(await getEnabledDomains()).map(normalizeHost).includes(d))throw new Error('Selected domain is unavailable.');const bad=validateDestinationUrl(originalUrl);if(bad)throw new Error(bad);c=await pool.connect();await c.query('BEGIN');const ur=await c.query('SELECT * FROM users WHERE id=$1 FOR UPDATE',[userId]);if(!ur.rowCount)throw new Error('User not found');const u=mapUser(ur.rows[0]);if(!u.isPremium)throw new Error('Premium feature only.');let code=String(customSlug||'').trim();if(code){if(!/^[A-Za-z0-9_-]{2,80}$/.test(code))throw new Error('Invalid custom code');const ex=await c.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[d,code]);if(ex.rowCount)throw new Error('Code already exists');}else{for(let i=0;i<20;i++){const g=generateShortCode();const ex=await c.query('SELECT 1 FROM links WHERE selected_domain=$1 AND short_code=$2',[d,g]);if(!ex.rowCount){code=g;break}}if(!code)throw new Error('Could not generate code');}const q=await c.query(`INSERT INTO links(user_id,selected_domain,original_url,short_code,custom_slug,link_type) VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,[userId,d,originalUrl,code,customSlug||null,type]);await c.query('UPDATE users SET total_links=total_links+1,lifetime_links_created=lifetime_links_created+1 WHERE id=$1',[userId]);await c.query('COMMIT');return mapLink(q.rows[0]);}catch(e){if(c)try{await c.query('ROLLBACK')}catch(_){};throw e}finally{if(c)c.release();}}
 
 
-app.get('/x-shortlink',authMiddleware,async(req,res)=>{try{if(await isToolMaintenanceOn('x'))return res.status(503).send(toolMaintenanceHtml('x'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('X Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices()),x=await getXSettings();res.render('index',{page:'x-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,xConfigured:xConfigured(),xConnected:!!x.x_access_token,xUsername:x.x_username,xOutput:req.query.xOutput||'',xOriginal:req.query.xOriginal||''});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open X tool'));}});
-app.post('/x-shortlink/post',authMiddleware,async(req,res)=>{try{if(await isToolMaintenanceOn('x'))return res.status(503).send(toolMaintenanceHtml('x'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Premium feature only.'));const url=String(req.body.originalUrl||'').trim(),caption=String(req.body.postText||'').trim();const bad=validateDestinationUrl(url);if(bad)return res.redirect('/x-shortlink?error='+encodeURIComponent(bad));const token=await getValidXToken();const text=(caption?caption+'\\n':'')+url;if(text.length>280)return res.redirect('/x-shortlink?error='+encodeURIComponent('Post text exceeds 280 characters.'));const r=await fetch(`${X_API_BASE}/tweets`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({text})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||j.title||'X post failed');const x=await getXSettings();const id=j?.data?.id;if(!id)throw new Error('X did not return post ID');const out=`https://x.com/${x.x_username||'i'}/status/${id}`;await notifyUser(u.id,'X Post created',out,'success');res.redirect('/x-shortlink?success='+encodeURIComponent('X post created.')+'&xOutput='+encodeURIComponent(out)+'&xOriginal='+encodeURIComponent(url));}catch(e){res.redirect('/x-shortlink?error='+encodeURIComponent(e.message||'X failed'));}});
+app.get('/x-shortlink',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('x')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('x'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('X Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices()),x=await getXSettings();res.render('index',{page:'x-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,xConfigured:xConfigured(),xConnected:!!x.x_access_token,xUsername:x.x_username,xOutput:req.query.xOutput||'',xOriginal:req.query.xOriginal||''});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open X tool'));}});
+app.post('/x-shortlink/post',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('x')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('x'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Premium feature only.'));const url=String(req.body.originalUrl||'').trim(),caption=String(req.body.postText||'').trim();const bad=validateDestinationUrl(url);if(bad)return res.redirect('/x-shortlink?error='+encodeURIComponent(bad));const token=await getValidXToken();const text=(caption?caption+'\\n':'')+url;if(text.length>280)return res.redirect('/x-shortlink?error='+encodeURIComponent('Post text exceeds 280 characters.'));const r=await fetch(`${X_API_BASE}/tweets`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({text})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||j.title||'X post failed');const x=await getXSettings();const id=j?.data?.id;if(!id)throw new Error('X did not return post ID');const out=`https://x.com/${x.x_username||'i'}/status/${id}`;await notifyUser(u.id,'X Post created',out,'success');res.redirect('/x-shortlink?success='+encodeURIComponent('X post created.')+'&xOutput='+encodeURIComponent(out)+'&xOriginal='+encodeURIComponent(url));}catch(e){res.redirect('/x-shortlink?error='+encodeURIComponent(e.message||'X failed'));}});
 app.get('/admin/x-connect',adminMiddleware,async(req,res)=>{try{if(!xConfigured())return res.redirect('/admin?error='+encodeURIComponent('Set X_CLIENT_ID, X_CLIENT_SECRET, X_REDIRECT_URI.'));const state=crypto.randomBytes(32).toString('base64url');req.session.xOAuthState=state;const u=new URL(X_AUTHORIZE_URL);u.searchParams.set('response_type','code');u.searchParams.set('client_id',X_CLIENT_ID);u.searchParams.set('redirect_uri',X_REDIRECT_URI);u.searchParams.set('scope',X_SCOPES);u.searchParams.set('state',state);u.searchParams.set('code_challenge',state);u.searchParams.set('code_challenge_method','plain');res.redirect(u.toString());}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
 app.get('/x/oauth/callback',adminMiddleware,async(req,res)=>{try{const code=String(req.query.code||''),state=String(req.query.state||'');if(!code||state!==String(req.session.xOAuthState||''))throw new Error('Invalid OAuth state');const basic=Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString('base64');const body=new URLSearchParams({grant_type:'authorization_code',code,redirect_uri:X_REDIRECT_URI,code_verifier:state,client_id:X_CLIENT_ID});const r=await fetch(X_TOKEN_URL,{method:'POST',headers:{Authorization:`Basic ${basic}`,'Content-Type':'application/x-www-form-urlencoded'},body});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.detail||'Token exchange failed');await saveXToken(j,'admin-oauth');const me=await fetch(`${X_API_BASE}/users/me`,{headers:{Authorization:`Bearer ${j.access_token}`}});const mj=await me.json().catch(()=>({}));if(!me.ok||!mj.data)throw new Error('Could not read X account');await setX('x_username',mj.data.username||'','admin-oauth');await setX('x_user_id',mj.data.id||'','admin-oauth');delete req.session.xOAuthState;res.redirect('/admin?success='+encodeURIComponent(`Connected @${mj.data.username}`));}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
 app.post('/admin/x-disconnect',adminMiddleware,async(req,res)=>{try{for(const k of ['x_access_token','x_refresh_token','x_token_expires_at','x_username','x_user_id'])await setX(k,'',ADMIN_EMAIL||'admin');res.redirect('/admin?success='+encodeURIComponent('X disconnected'));}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
-app.get('/canva-shortlink',authMiddleware,async(req,res)=>{try{if(await isToolMaintenanceOn('canva'))return res.status(503).send(toolMaintenanceHtml('canva'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Canva Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices());res.render('index',{page:'canva-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,canvaOriginal:req.query.canvaOriginal||''});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open Canva tool'));}});
-app.post('/canva-shortlink/create',authMiddleware,async(req,res)=>{try{if(await isToolMaintenanceOn('canva'))return res.status(503).send(toolMaintenanceHtml('canva'));const url=String(req.body.originalUrl||'').trim();if(!isCanvaUrl(url))return res.redirect('/canva-shortlink?error='+encodeURIComponent('Enter a valid Canva share/design URL.'));const link=await createToolLink(req.user.id,url,String(req.body.domain||BASE_HOST),String(req.body.customSlug||''),'canva');const out=buildShortUrl(link);res.redirect('/canva-shortlink?success='+encodeURIComponent('Canva link shortened.')+'&shortUrl='+encodeURIComponent(out)+'&canvaOriginal='+encodeURIComponent(url));}catch(e){res.redirect('/canva-shortlink?error='+encodeURIComponent(e.message));}});
+app.get('/canva-shortlink',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Canva Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices());res.render('index',{page:'canva-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,canvaOriginal:req.query.canvaOriginal||''});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open Canva tool'));}});
+app.post('/canva-shortlink/create',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const url=String(req.body.originalUrl||'').trim();if(!isCanvaUrl(url))return res.redirect('/canva-shortlink?error='+encodeURIComponent('Enter a valid Canva share/design URL.'));const link=await createToolLink(req.user.id,url,String(req.body.domain||BASE_HOST),String(req.body.customSlug||''),'canva');const out=buildShortUrl(link);res.redirect('/canva-shortlink?success='+encodeURIComponent('Canva link shortened.')+'&shortUrl='+encodeURIComponent(out)+'&canvaOriginal='+encodeURIComponent(url));}catch(e){res.redirect('/canva-shortlink?error='+encodeURIComponent(e.message));}});
 
 // ===== GOOGLE SHORTLINK TOOL =====
 // Google officially generates share.google/search.app short IDs inside the Google app.
@@ -1722,6 +1733,36 @@ app.post('/links/:id/update',authMiddleware,async(req,res)=>{
     console.error('User link update error:',e);
     res.redirect('/my-links?error='+encodeURIComponent('Failed to update link'));
   }
+});
+
+app.post('/links/:id/auto-update',authMiddleware,async(req,res)=>{
+  try{
+    const id=Number(req.params.id);
+    const nextUrl=String(req.body.autoUpdateUrl||'').trim();
+    const threshold=Number.parseInt(req.body.autoUpdateThreshold,10);
+    const returnTo=String(req.body.returnTo||'/my-links');
+    const safeReturn=['/my-links','/dashboard'].includes(returnTo)?returnTo:(`/links/${id}/stats`);
+    if(!Number.isFinite(id)||id<=0)return res.redirect(safeReturn+'?error='+encodeURIComponent('Invalid link ID'));
+    if(!nextUrl)return res.redirect(safeReturn+'?error='+encodeURIComponent('Please enter the automatic update URL'));
+    const unsafe=validateDestinationUrl(nextUrl);
+    if(unsafe)return res.redirect(safeReturn+'?error='+encodeURIComponent(unsafe));
+    if(!Number.isInteger(threshold)||threshold<1||threshold>1000000)return res.redirect(safeReturn+'?error='+encodeURIComponent('Switch-after clicks must be between 1 and 1,000,000'));
+    const q=await pool.query(`UPDATE links SET auto_update_url=$1,auto_update_threshold=$2,auto_update_enabled=TRUE,
+      auto_update_start_clicks=clicks,auto_update_switched_at=NULL,updated_at=NOW()
+      WHERE id=$3 AND user_id=$4 RETURNING id`,[nextUrl,threshold,id,req.user.id]);
+    if(!q.rowCount)return res.redirect(safeReturn+'?error='+encodeURIComponent('Link not found or you do not own this link'));
+    await notifyUser(req.user.id,'Automatic link update enabled',`Destination will switch automatically after ${threshold} new real clicks.`,'success');
+    res.redirect(safeReturn+'?success='+encodeURIComponent(`Automatic update enabled: switch after ${threshold} new real clicks.`));
+  }catch(e){console.error('Auto update setup error:',e);res.redirect('/my-links?error='+encodeURIComponent('Failed to configure automatic update'));}
+});
+app.post('/links/:id/auto-update/disable',authMiddleware,async(req,res)=>{
+  try{
+    const id=Number(req.params.id),returnTo=String(req.body.returnTo||'/my-links');
+    const safeReturn=['/my-links','/dashboard'].includes(returnTo)?returnTo:(`/links/${id}/stats`);
+    const q=await pool.query(`UPDATE links SET auto_update_enabled=FALSE,updated_at=NOW() WHERE id=$1 AND user_id=$2 RETURNING id`,[id,req.user.id]);
+    if(!q.rowCount)return res.redirect(safeReturn+'?error='+encodeURIComponent('Link not found'));
+    res.redirect(safeReturn+'?success='+encodeURIComponent('Automatic link update disabled.'));
+  }catch(e){res.redirect('/my-links?error='+encodeURIComponent('Failed to disable automatic update'));}
 });
 
 app.post('/links/:id/toggle',authMiddleware,async(req,res)=>{
@@ -2557,10 +2598,20 @@ async function handleStoredLinkRedirect(req,res,row){
     );
 
     if(!bot){
-      await Promise.all([
-        pool.query('UPDATE links SET clicks=clicks+1 WHERE id=$1',[link.id]),
-        pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId])
-      ]);
+      // Count this real click first. If an automatic destination is armed, the click that
+      // reaches the threshold still goes to the current destination; subsequent clicks use the new one.
+      const clickUpdate=await pool.query(`UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *`,[link.id]);
+      await pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId]);
+      const fresh=clickUpdate.rowCount?clickUpdate.rows[0]:row;
+      if(fresh.auto_update_enabled && fresh.auto_update_url && Number(fresh.auto_update_threshold)>0 &&
+         (Number(fresh.clicks)-Number(fresh.auto_update_start_clicks||0))>=Number(fresh.auto_update_threshold)){
+        const switched=await pool.query(`UPDATE links SET original_url=auto_update_url,auto_update_enabled=FALSE,
+          auto_update_switched_at=NOW(),updated_at=NOW()
+          WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,[link.id]);
+        if(switched.rowCount){
+          notifyUser(link.userId,'Automatic link update completed',`Your short link ${buildShortUrl(link)} reached its click target and the destination was updated automatically.`,'success').catch(()=>{});
+        }
+      }
     }
 
     if(isSocialPreviewBot(ua)) return renderSocialPreview(req,res,link);
