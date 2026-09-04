@@ -1414,8 +1414,8 @@ app.post('/x-shortlink/post',authMiddleware,async(req,res)=>{try{if((await isToo
 app.get('/admin/x-connect',adminMiddleware,async(req,res)=>{try{if(!xConfigured())return res.redirect('/admin?error='+encodeURIComponent('Set X_CLIENT_ID, X_CLIENT_SECRET, X_REDIRECT_URI.'));const state=crypto.randomBytes(32).toString('base64url');req.session.xOAuthState=state;const u=new URL(X_AUTHORIZE_URL);u.searchParams.set('response_type','code');u.searchParams.set('client_id',X_CLIENT_ID);u.searchParams.set('redirect_uri',X_REDIRECT_URI);u.searchParams.set('scope',X_SCOPES);u.searchParams.set('state',state);u.searchParams.set('code_challenge',state);u.searchParams.set('code_challenge_method','plain');res.redirect(u.toString());}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
 app.get('/x/oauth/callback',adminMiddleware,async(req,res)=>{try{const code=String(req.query.code||''),state=String(req.query.state||'');if(!code||state!==String(req.session.xOAuthState||''))throw new Error('Invalid OAuth state');const basic=Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString('base64');const body=new URLSearchParams({grant_type:'authorization_code',code,redirect_uri:X_REDIRECT_URI,code_verifier:state,client_id:X_CLIENT_ID});const r=await fetch(X_TOKEN_URL,{method:'POST',headers:{Authorization:`Basic ${basic}`,'Content-Type':'application/x-www-form-urlencoded'},body});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.detail||'Token exchange failed');await saveXToken(j,'admin-oauth');const me=await fetch(`${X_API_BASE}/users/me`,{headers:{Authorization:`Bearer ${j.access_token}`}});const mj=await me.json().catch(()=>({}));if(!me.ok||!mj.data)throw new Error('Could not read X account');await setX('x_username',mj.data.username||'','admin-oauth');await setX('x_user_id',mj.data.id||'','admin-oauth');delete req.session.xOAuthState;res.redirect('/admin?success='+encodeURIComponent(`Connected @${mj.data.username}`));}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
 app.post('/admin/x-disconnect',adminMiddleware,async(req,res)=>{try{for(const k of ['x_access_token','x_refresh_token','x_token_expires_at','x_username','x_user_id'])await setX(k,'',ADMIN_EMAIL||'admin');res.redirect('/admin?success='+encodeURIComponent('X disconnected'));}catch(e){res.redirect('/admin?error='+encodeURIComponent(e.message));}});
-app.get('/canva-shortlink',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Canva Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices());res.render('index',{page:'canva-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,canvaOriginal:req.query.canvaOriginal||''});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open Canva tool'));}});
-app.post('/canva-shortlink/create',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const url=String(req.body.originalUrl||'').trim();if(!isCanvaUrl(url))return res.redirect('/canva-shortlink?error='+encodeURIComponent('Enter a valid Canva share/design URL.'));const link=await createToolLink(req.user.id,url,String(req.body.domain||BASE_HOST),String(req.body.customSlug||''),'canva');const out=buildShortUrl(link);res.redirect('/canva-shortlink?success='+encodeURIComponent('Canva link shortened.')+'&shortUrl='+encodeURIComponent(out)+'&canvaOriginal='+encodeURIComponent(url));}catch(e){res.redirect('/canva-shortlink?error='+encodeURIComponent(e.message));}});
+app.get('/canva-shortlink',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const u=await getUserById(req.user.id);if(!u.isPremium)return res.redirect('/plans?error='+encodeURIComponent('Canva Shortlink is available to Premium users only.'));const active=await getActiveOnlineUsers(),choices=getDomainChoicesForUser(u,await getDomainChoices());res.render('index',{page:'canva-shortlink',user:u,onlineUsers:active.length,onlineUserList:active.map(v=>({name:v.displayName||v.username||'User'})),countries,error:req.query.error||null,success:req.query.success||null,info:null,shortUrl:req.query.shortUrl||null,customDomains:choices.filter(v=>v.selectable).map(v=>v.domain).filter(v=>v!==normalizeHost(BASE_HOST)),availableDomains:choices.filter(v=>v.selectable).map(v=>v.domain),domainChoices:choices,baseDomain:BASE_HOST,baseUrl:BASE_URL,canvaOriginal:req.query.canvaOriginal||'',createdLinkId:req.query.createdLinkId||null});}catch(e){res.redirect('/dashboard?error='+encodeURIComponent('Could not open Canva tool'));}});
+app.post('/canva-shortlink/create',authMiddleware,async(req,res)=>{try{if((await isToolMaintenanceOn('canva')) && !(await getAdminState(req)))return res.status(503).send(toolMaintenanceHtml('canva'));const url=String(req.body.originalUrl||'').trim();if(!isCanvaUrl(url))return res.redirect('/canva-shortlink?error='+encodeURIComponent('Enter a valid Canva share/design URL.'));const link=await createToolLink(req.user.id,url,String(req.body.domain||BASE_HOST),String(req.body.customSlug||''),'canva');const out=buildShortUrl(link);res.redirect('/canva-shortlink?success='+encodeURIComponent('Canva link shortened.')+'&shortUrl='+encodeURIComponent(out)+'&canvaOriginal='+encodeURIComponent(url)+'&createdLinkId='+encodeURIComponent(link.id));}catch(e){res.redirect('/canva-shortlink?error='+encodeURIComponent(e.message));}});
 
 // ===== GOOGLE SHORTLINK TOOL =====
 // Google officially generates share.google/search.app short IDs inside the Google app.
@@ -1432,7 +1432,7 @@ app.get('/google-shortlink',authMiddleware,async(req,res)=>{
     const {googleStyleLinks,googleAnalytics}=await getGoogleStyleAnalytics(req.user.id);
     res.render('index',{page:'google-shortlink',user:freshUser,onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
       countries,error:req.query.error||null,success:null,info:null,shortUrl:null,customDomains:availableDomains.filter(d=>d!==normalizeHost(BASE_HOST)),
-      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||'',googleStyleLinks,googleAnalytics});
+      availableDomains,domainChoices,baseDomain:BASE_HOST,baseUrl:BASE_URL,googleInput:'',googleConvertedUrl:'',googleShortUrl:'',googleStyleUrl:req.query.googleStyleUrl||'',googleStyleOriginal:req.query.googleStyleOriginal||'',googleStyleDomain:req.query.googleStyleDomain||'',googleStyleCode:req.query.googleStyleCode||'',createdLinkId:req.query.createdLinkId||null,googleStyleLinks,googleAnalytics});
   }catch(err){console.error('Google shortlink page error:',err);res.redirect('/dashboard?error='+encodeURIComponent('Could not open Google Shortlink tool'));}
 });
 
@@ -1543,7 +1543,8 @@ app.post('/google-shortlink/create-style',authMiddleware,async(req,res)=>{
       '&googleStyleUrl='+encodeURIComponent(googleStyleUrl)+
       '&googleStyleOriginal='+encodeURIComponent(originalUrl)+
       '&googleStyleDomain='+encodeURIComponent(requestedDomain)+
-      '&googleStyleCode='+encodeURIComponent(shortCode)
+      '&googleStyleCode='+encodeURIComponent(shortCode)+
+      '&createdLinkId='+encodeURIComponent(link.id)
     );
   }catch(err){
     if(client){try{await client.query('ROLLBACK');}catch(_){}}
@@ -2559,31 +2560,8 @@ app.post('/unlock/:id', async(req,res)=>{
 });
 
 // ===== SHORT URL REDIRECT (keep after all named routes) =====
-async function handleStoredLinkRedirect(req,res,row){
+async function processRedirectAnalytics(req,row,link){
   try{
-    let link=mapLink(row);
-
-    if(link.isExpired||(link.expiresAt&&new Date(link.expiresAt)<new Date())){
-      await pool.query('UPDATE links SET is_expired=TRUE WHERE id=$1',[link.id]);
-      return res.status(410).send('This link has expired');
-    }
-
-    const uaPre=req.headers['user-agent']||'';
-    if(row.password_enabled && row.password_hash && !isSocialPreviewBot(uaPre)){
-      const unlocked=req.session?.unlockedLinks?.[String(link.id)];
-      if(!unlocked || Number(unlocked)<Date.now()){
-        const active=await getActiveOnlineUsers();
-        const user=req.session?.user?.id?await getUserById(req.session.user.id):null;
-        return res.status(401).render('index',{
-          page:'link-password',user,link,unlockError:req.query.unlockError==='1',
-          onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
-          countries,error:null,success:null,info:null,shortUrl:null,
-          customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,
-          baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)
-        });
-      }
-    }
-
     const ip=getRealClientIp(req);
     const ua=req.headers['user-agent']||'';
     const ref=req.headers['referer']||req.headers['referrer']||'';
@@ -2598,29 +2576,75 @@ async function handleStoredLinkRedirect(req,res,row){
     );
 
     if(!bot){
-      // Count this real click first. If an automatic destination is armed, the click that
-      // reaches the threshold still goes to the current destination; subsequent clicks use the new one.
-      const clickUpdate=await pool.query(`UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *`,[link.id]);
-      await pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId]);
+      const clickUpdate=await pool.query(
+        `UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *`,
+        [link.id]
+      );
+      pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId]).catch(()=>{});
       const fresh=clickUpdate.rowCount?clickUpdate.rows[0]:row;
+
       if(fresh.auto_update_enabled && fresh.auto_update_url && Number(fresh.auto_update_threshold)>0 &&
          (Number(fresh.clicks)-Number(fresh.auto_update_start_clicks||0))>=Number(fresh.auto_update_threshold)){
-        const switched=await pool.query(`UPDATE links SET original_url=auto_update_url,auto_update_enabled=FALSE,
-          auto_update_switched_at=NOW(),updated_at=NOW()
-          WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,[link.id]);
+        const switched=await pool.query(
+          `UPDATE links SET original_url=auto_update_url,auto_update_enabled=FALSE,
+           auto_update_switched_at=NOW(),updated_at=NOW()
+           WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,
+          [link.id]
+        );
         if(switched.rowCount){
-          notifyUser(link.userId,'Automatic link update completed',`Your short link ${buildShortUrl(link)} reached its click target and the destination was updated automatically.`,'success').catch(()=>{});
+          notifyUser(
+            link.userId,
+            'Automatic link update completed',
+            `Your short link ${buildShortUrl(link)} reached its click target and the destination was updated automatically.`,
+            'success'
+          ).catch(()=>{});
         }
       }
     }
+  }catch(e){
+    console.error('Background redirect analytics error:',e.message||e);
+  }
+}
 
-    if(isSocialPreviewBot(ua)) return renderSocialPreview(req,res,link);
+async function handleStoredLinkRedirect(req,res,row){
+  try{
+    const link=mapLink(row);
 
+    if(link.isExpired||(link.expiresAt&&new Date(link.expiresAt)<new Date())){
+      pool.query('UPDATE links SET is_expired=TRUE WHERE id=$1',[link.id]).catch(()=>{});
+      return res.status(410).send('This link has expired');
+    }
+
+    const ua=req.headers['user-agent']||'';
+    if(row.password_enabled && row.password_hash && !isSocialPreviewBot(ua)){
+      const unlocked=req.session?.unlockedLinks?.[String(link.id)];
+      if(!unlocked || Number(unlocked)<Date.now()){
+        const active=await getActiveOnlineUsers();
+        const user=req.session?.user?.id?await getUserById(req.session.user.id):null;
+        return res.status(401).render('index',{
+          page:'link-password',user,link,unlockError:req.query.unlockError==='1',
+          onlineUsers:active.length,onlineUserList:active.map(u=>({name:u.displayName||u.username||'User'})),
+          countries,error:null,success:null,info:null,shortUrl:null,
+          customDomains:CUSTOM_DOMAINS,availableDomains:AVAILABLE_DOMAINS,
+          baseDomain:BASE_HOST,baseUrl:getBaseUrl(req)
+        });
+      }
+    }
+
+    if(isSocialPreviewBot(ua)){
+      processRedirectAnalytics(req,row,link).catch(()=>{});
+      return renderSocialPreview(req,res,link);
+    }
+
+    // FAST PATH: send the 302 immediately. Geo lookup, click insert, counters and
+    // auto-update processing continue asynchronously after the visitor is already redirected.
     res.set('Cache-Control','no-store');
-    return res.redirect(302,link.originalUrl);
+    res.redirect(302,link.originalUrl);
+    processRedirectAnalytics(req,row,link).catch(()=>{});
+    return;
   }catch(e){
     console.error('Stored link redirect error:',e);
-    return res.status(500).send('Error redirecting');
+    if(!res.headersSent) return res.status(500).send('Error redirecting');
   }
 }
 
