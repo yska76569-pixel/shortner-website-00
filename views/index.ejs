@@ -2998,42 +2998,64 @@ textarea::placeholder{
 
 .auto-update-box{width:100%;margin-top:.65rem;padding:.75rem .85rem;border:1px solid rgba(105,130,255,.22);border-radius:14px;background:rgba(79,91,213,.06)}.auto-update-box summary{cursor:pointer;font-weight:800;color:#9fe9ff;list-style:none}.auto-update-box summary::-webkit-details-marker{display:none}.auto-update-form{display:grid;grid-template-columns:minmax(180px,1fr) 110px auto;gap:.55rem;margin-top:.75rem}.auto-update-form input{width:100%;min-width:0;padding:.68rem .75rem;border-radius:10px;border:1px solid var(--glass-border);background:rgba(8,15,35,.72);color:var(--text)}.auto-update-status{margin:.65rem 0;color:var(--text-muted);font-size:.8rem;line-height:1.55;overflow-wrap:anywhere}.auto-update-status strong{color:#9fe9ff}@media(max-width:760px){.auto-update-form{grid-template-columns:1fr}.auto-update-form button{width:100%}}
 
-/* V7.44 — CLEAN RESPONSIVE 4K UI */
-html{font-size:clamp(14px,.72vw,22px)}
+/* ===== V7.46 CLEAN RESPONSIVE UI ===== */
+html{font-size:clamp(14px,.72vw,22px);text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 body{min-width:0;overflow-x:hidden}
-.main-content,.content,.container,.dashboard-container{max-width:min(94vw,2300px)}
+.main-content,.content,.container,.dashboard-container{max-width:min(94vw,2360px)}
 img,video,canvas,svg{max-width:100%;height:auto}
 table{max-width:100%}
 .glass-card,.link-card,.stat-card,.google-style-card{border-radius:clamp(14px,.8vw,26px)}
 .btn,.form-control,input,select,textarea{font-size:clamp(.78rem,.72vw,1rem)}
-.v744-controls{position:fixed;right:18px;bottom:18px;z-index:100000;display:flex;gap:8px;padding:8px;border:1px solid var(--glass-border);border-radius:16px;background:rgba(8,15,35,.94);backdrop-filter:blur(18px);box-shadow:0 12px 38px rgba(0,0,0,.32)}
-.v744-controls select,.v744-controls button{border:1px solid var(--glass-border);border-radius:10px;padding:9px 11px;background:#11182b;color:#fff;font-weight:800;cursor:pointer}
+.v746-ui-controls{position:fixed;right:18px;bottom:18px;z-index:100000;display:flex;gap:8px;padding:8px;border:1px solid var(--glass-border);border-radius:16px;background:rgba(8,15,35,.94);backdrop-filter:blur(18px);box-shadow:0 12px 38px rgba(0,0,0,.32)}
+.v746-ui-controls select,.v746-ui-controls button{border:1px solid var(--glass-border);border-radius:10px;padding:9px 11px;background:#11182b;color:#fff;font-weight:800;cursor:pointer}
 html[data-theme="light"] body{background:#f4f7fb!important;color:#172033!important}
-html[data-theme="light"] .glass-card,html[data-theme="light"] .link-card,html[data-theme="light"] .stat-card,html[data-theme="light"] .google-style-card,html[data-theme="light"] .modal-content,html[data-theme="light"] .sidebar{background:rgba(255,255,255,.97)!important;color:#172033!important;border-color:rgba(20,30,50,.13)!important}
+html[data-theme="light"] .glass-card,
+html[data-theme="light"] .link-card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .google-style-card,
+html[data-theme="light"] .modal-content,
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .topbar{background:rgba(255,255,255,.97)!important;color:#172033!important;border-color:rgba(20,30,50,.13)!important}
 html[data-theme="light"] h1,html[data-theme="light"] h2,html[data-theme="light"] h3,html[data-theme="light"] strong{color:#172033}
 html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea,html[data-theme="light"] .form-control{background:#fff!important;color:#172033!important;border-color:rgba(20,30,50,.18)!important}
-html[data-theme="light"] .v744-controls{background:rgba(255,255,255,.96)}
-html[data-theme="light"] .v744-controls select,html[data-theme="light"] .v744-controls button{background:#fff;color:#172033}
+html[data-theme="light"] .v746-ui-controls{background:rgba(255,255,255,.96)}
+html[data-theme="light"] .v746-ui-controls select,html[data-theme="light"] .v746-ui-controls button{background:#fff;color:#172033}
 html[dir="rtl"] body{text-align:right}
-html[dir="rtl"] .v744-controls{right:auto;left:18px}
-.canva-guide-card{margin-top:1.2rem}
-.canva-guide-card h2{margin-bottom:.3rem}.guide-intro{color:var(--text-muted);margin-bottom:1rem}
-.guide-step{display:flex;gap:.85rem;align-items:flex-start;padding:.9rem;margin:.65rem 0;border:1px solid var(--glass-border);border-radius:14px;background:rgba(255,255,255,.025)}
-.guide-step>b{display:grid;place-items:center;width:34px;height:34px;min-width:34px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#ec4899);color:white}
-.guide-step p{margin:.25rem 0 0;color:var(--text-muted);line-height:1.55}
-.created-auto-box{margin-top:1rem!important}
-@media(min-width:2560px){.main-content,.content,.container,.dashboard-container{max-width:2400px}.sidebar{font-size:1rem}.stat-card{min-height:150px}}
-@media(min-width:3400px){html{font-size:22px}.main-content,.content,.container,.dashboard-container{max-width:3200px}.v744-controls{right:30px;bottom:30px}}
-@media(max-width:760px){html{font-size:14px}.v744-controls{right:8px;bottom:8px}.v744-controls select,.v744-controls button{padding:7px 8px;font-size:12px}.guide-step{padding:.7rem}}
+html[dir="rtl"] .v746-ui-controls{right:auto;left:18px}
+.v746-canva-guide{margin-top:1.25rem}
+.v746-canva-guide h2{margin-bottom:.35rem}
+.v746-guide-intro{color:var(--text-muted);margin-bottom:1rem}
+.v746-guide-step{display:flex;gap:.85rem;align-items:flex-start;padding:.9rem;margin:.65rem 0;border:1px solid var(--glass-border);border-radius:14px;background:rgba(255,255,255,.025)}
+.v746-guide-step>b{display:grid;place-items:center;width:34px;height:34px;min-width:34px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff}
+.v746-guide-step p{margin:.25rem 0 0;color:var(--text-muted);line-height:1.55}
+.v746-created-auto{margin:0 0 1.3rem!important}
+@media(min-width:2560px){
+  .main-content,.content,.container,.dashboard-container{max-width:2460px}
+  .sidebar{font-size:1rem}
+  .stat-card{min-height:150px}
+}
+@media(min-width:3400px){
+  html{font-size:22px}
+  .main-content,.content,.container,.dashboard-container{max-width:3300px}
+  .v746-ui-controls{right:30px;bottom:30px}
+}
+@media(max-width:760px){
+  html{font-size:14px}
+  .v746-ui-controls{right:8px;bottom:8px}
+  .v746-ui-controls select,.v746-ui-controls button{padding:7px 8px;font-size:12px}
+  .v746-guide-step{padding:.7rem}
+}
 
 </style>
 </head>
 <body>
-<div id="v744Controls" class="v744-controls">
-  <select id="v744Language" aria-label="Language">
-    <option value="en">English</option><option value="bn">বাংলা</option><option value="ar">العربية</option>
+<div id="v746UiControls" class="v746-ui-controls">
+  <select id="v746Language" aria-label="Language">
+    <option value="en">English</option>
+    <option value="bn">বাংলা</option>
+    <option value="ar">العربية</option>
   </select>
-  <button id="v744Theme" type="button">🌙 Dark</button>
+  <button id="v746Theme" type="button" aria-label="Theme">🌙 Dark</button>
 </div>
 
     <% if (typeof announcement !== 'undefined' && announcement && announcement.message) { %>
@@ -4066,46 +4088,79 @@ html[dir="rtl"] .v744-controls{right:auto;left:18px}
 <div class="fade-in google-shortlink-page">
   <div class="brand-center">
     <div class="google-tool-icon" style="background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b);"><i class="fas fa-palette"></i></div>
-    <h1 data-t="canva_title">Canva Shortlink</h1>
-    <p data-t="canva_sub">Shorten Canva share/design URLs using your own premium domains.</p>
+    <h1 data-i18n-key="canvaTitle">Canva Shortlink</h1>
+    <p data-i18n-key="canvaSubtitle">Shorten Canva share/design URLs using your own premium domains.</p>
   </div>
+
   <div class="glass-card google-style-card">
     <form method="POST" action="/canva-shortlink/create">
-      <div class="form-group"><label data-t="canva_url">Canva URL</label><input class="form-control" type="url" name="originalUrl" required value="<%= canvaOriginal||'' %>" placeholder="https://www.canva.com/design/..."></div>
-      <div class="google-domain-grid">
-        <div class="form-group"><label data-t="short_domain">Short Domain</label><select class="form-control" name="domain"><% (domainChoices||[]).forEach(function(d){ %><option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance':' — Unavailable')) %></option><% }); %></select></div>
-        <div class="form-group"><label data-t="custom_code">Custom Code</label><input class="form-control" name="customSlug" placeholder="Optional"></div>
+      <div class="form-group">
+        <label data-i18n-key="canvaUrl">Canva URL</label>
+        <input class="form-control" type="url" name="originalUrl" required value="<%= canvaOriginal||'' %>" placeholder="https://www.canva.com/design/...">
       </div>
-      <button class="btn btn-primary google-convert-btn"><i class="fas fa-palette"></i> <span data-t="create_canva">Create Canva Shortlink</span></button>
+
+      <div class="google-domain-grid">
+        <div class="form-group">
+          <label data-i18n-key="shortDomain">Short Domain</label>
+          <select class="form-control" name="domain">
+            <% (domainChoices||[]).forEach(function(d){ %>
+              <option value="<%= d.domain %>" <%= d.selectable?'':'disabled' %>><%= d.domain %><%= d.selectable?'':(d.planRestricted?' — Premium Only':(d.maintenance?' — Maintenance':' — Unavailable')) %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n-key="customCode">Custom Code</label>
+          <input class="form-control" name="customSlug" placeholder="Optional">
+        </div>
+      </div>
+
+      <button class="btn btn-primary google-convert-btn">
+        <i class="fas fa-palette"></i>
+        <span data-i18n-key="createCanva">Create Canva Shortlink</span>
+      </button>
     </form>
+
     <% if(shortUrl){ %>
-      <div class="google-output-box" style="margin-top:1rem;"><div class="output-label" data-t="short_link">Short Link</div><div class="output-url"><code id="canvaOut"><%= shortUrl %></code><button class="copy-btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('canvaOut').innerText);showToast('Copied','success')"><i class="fas fa-copy"></i></button></div></div>
+      <div class="google-output-box" style="margin-top:1rem;">
+        <div class="output-label" data-i18n-key="shortLink">Short Link</div>
+        <div class="output-url">
+          <code id="canvaOut"><%= shortUrl %></code>
+          <button class="copy-btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('canvaOut').innerText);showToast('Copied','success')"><i class="fas fa-copy"></i></button>
+        </div>
+      </div>
+
       <% if(typeof createdLinkId!=='undefined' && createdLinkId){ %>
-      <details class="auto-update-box created-auto-box">
-        <summary>⚡ <span data-t="auto_update">Automatic Link Update</span></summary>
-        <form action="/links/<%= createdLinkId %>/auto-update" method="POST" class="auto-update-form">
-          <input type="hidden" name="returnTo" value="/canva-shortlink">
-          <input type="url" name="autoUpdateUrl" placeholder="Next destination URL" required>
-          <input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="20" required>
-          <button class="btn btn-primary btn-sm" type="submit">⚡ <span data-t="save_auto">Save Auto Update</span></button>
-        </form>
-      </details>
+        <details class="auto-update-box v746-created-auto">
+          <summary>⚡ <span data-i18n-key="automaticUpdate">Automatic Link Update</span></summary>
+          <form action="/links/<%= createdLinkId %>/auto-update" method="POST" class="auto-update-form">
+            <input type="hidden" name="returnTo" value="/canva-shortlink">
+            <input type="url" name="autoUpdateUrl" placeholder="Next destination URL" required>
+            <input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="20" required>
+            <button class="btn btn-primary btn-sm" type="submit">⚡ <span data-i18n-key="saveAutomaticUpdate">Save Auto Update</span></button>
+          </form>
+        </details>
       <% } %>
     <% } %>
-    <div class="google-api-note"><i class="fas fa-circle-info"></i><span data-t="canva_note">This creates your own-domain short link for Canva URLs. It is not a Canva-owned generated URL.</span></div>
+
+    <div class="google-api-note">
+      <i class="fas fa-circle-info"></i>
+      <span data-i18n-key="canvaNote">This creates your own-domain short link for Canva URLs. It is not a Canva-owned generated URL.</span>
+    </div>
   </div>
 
-  <div class="glass-card canva-guide-card">
-    <h2>📘 <span data-t="guide_title">How to create a Canva Shortlink</span></h2>
-    <p class="guide-intro" data-t="guide_intro">Follow these steps to copy a Canva share link and shorten it here.</p>
-    <div class="guide-step"><b>1</b><div><strong data-t="g1t">Open your design in Canva</strong><p data-t="g1d">Open the design, presentation, poster, video, or other Canva content you want to share.</p></div></div>
-    <div class="guide-step"><b>2</b><div><strong data-t="g2t">Use the Share button</strong><p data-t="g2d">Choose the sharing permission that is appropriate for the people who will receive the link.</p></div></div>
-    <div class="guide-step"><b>3</b><div><strong data-t="g3t">Copy the Canva share link</strong><p data-t="g3d">Copy the Canva share/design URL from Canva.</p></div></div>
-    <div class="guide-step"><b>4</b><div><strong data-t="g4t">Paste the link above</strong><p data-t="g4d">Paste it into Canva URL, select your short domain, and optionally enter a custom code.</p></div></div>
-    <div class="guide-step"><b>5</b><div><strong data-t="g5t">Create and copy</strong><p data-t="g5d">Create the short link and copy it. You can also configure Automatic Link Update immediately.</p></div></div>
+  <div class="glass-card v746-canva-guide">
+    <h2>📘 <span data-i18n-key="guideTitle">How to create a Canva Shortlink</span></h2>
+    <p class="v746-guide-intro" data-i18n-key="guideIntro">Follow these steps to copy a Canva share link and shorten it here.</p>
+
+    <div class="v746-guide-step"><b>1</b><div><strong data-i18n-key="g1t">Open your design in Canva</strong><p data-i18n-key="g1d">Open the design, presentation, poster, video, or other Canva content you want to share.</p></div></div>
+    <div class="v746-guide-step"><b>2</b><div><strong data-i18n-key="g2t">Use the Share button</strong><p data-i18n-key="g2d">Choose the sharing permission that is appropriate for the people who will receive the link.</p></div></div>
+    <div class="v746-guide-step"><b>3</b><div><strong data-i18n-key="g3t">Copy the Canva share link</strong><p data-i18n-key="g3d">Copy the Canva share/design URL from Canva.</p></div></div>
+    <div class="v746-guide-step"><b>4</b><div><strong data-i18n-key="g4t">Paste the link above</strong><p data-i18n-key="g4d">Paste it into Canva URL, select your short domain, and optionally enter a custom code.</p></div></div>
+    <div class="v746-guide-step"><b>5</b><div><strong data-i18n-key="g5t">Create and copy</strong><p data-i18n-key="g5d">Create the short link and copy it. You can also configure Automatic Link Update immediately.</p></div></div>
   </div>
 </div>
-
+<% } %>
 
 <!-- ===== GOOGLE SHORTLINK PAGE ===== -->
         <% if (page === 'google-shortlink') { %>
@@ -4198,13 +4253,13 @@ html[dir="rtl"] .v744-controls{right:auto;left:18px}
                   <span>Ready for direct 302 redirect. Copy the short link above and use it anywhere.</span>
                 </div>
                 <% if(typeof createdLinkId!=='undefined' && createdLinkId){ %>
-                <details class="auto-update-box created-auto-box">
-                  <summary>⚡ <span data-t="auto_update">Automatic Link Update</span></summary>
+                <details class="auto-update-box v746-created-auto">
+                  <summary>⚡ <span data-i18n-key="automaticUpdate">Automatic Link Update</span></summary>
                   <form action="/links/<%= createdLinkId %>/auto-update" method="POST" class="auto-update-form">
                     <input type="hidden" name="returnTo" value="/google-shortlink">
                     <input type="url" name="autoUpdateUrl" placeholder="Next destination URL" required>
                     <input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="20" required>
-                    <button class="btn btn-primary btn-sm" type="submit">⚡ <span data-t="save_auto">Save Auto Update</span></button>
+                    <button class="btn btn-primary btn-sm" type="submit">⚡ <span data-i18n-key="saveAutomaticUpdate">Save Auto Update</span></button>
                   </form>
                 </details>
                 <% } %>
@@ -4329,7 +4384,30 @@ html[dir="rtl"] .v744-controls{right:auto;left:18px}
                     </form>
                     <% if (typeof customDomains === 'undefined' || !customDomains || customDomains.length === 0) { %><div class="alert alert-info" style="margin-top:1rem;margin-bottom:0;">ℹ️ Only the base domain is active. Connected custom domains will appear here after you set DOMAIN_1, DOMAIN_2, etc. in Railway.</div><% } %>
                 </div>
-                <% if (typeof shortUrl !== 'undefined' && shortUrl) { var createdUrlParts = String(shortUrl).replace(/^https?:\/\//,'').split('/'); var createdDomain = createdUrlParts[0] || ''; var createdCode = createdUrlParts[1] || ''; %><div class="short-link-display" style="margin-bottom:2rem;"><div><div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem;">YOUR NEW SHORT LINK</div><span class="link"><%= shortUrl %></span></div><div style="display:flex;gap:.5rem;flex-wrap:wrap;"><button class="copy-btn" onclick="copyToClipboard('<%= shortUrl %>')">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= createdCode %>','<%= createdDomain %>')">📱 QR</button><a class="btn btn-secondary btn-sm" href="<%= shortUrl %>" target="_blank">↗ Test</a></div></div><% if(typeof createdLinkId!=='undefined' && createdLinkId){ %><details class="auto-update-box created-auto-box"><summary>⚡ <span data-t="auto_update">Automatic Link Update</span></summary><form action="/links/<%= createdLinkId %>/auto-update" method="POST" class="auto-update-form"><input type="hidden" name="returnTo" value="/shorten-page"><input type="url" name="autoUpdateUrl" placeholder="Next destination URL" required><input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="20" required><button class="btn btn-primary btn-sm" type="submit">⚡ <span data-t="save_auto">Save Auto Update</span></button></form></details><% } %><% } %>
+                <% if (typeof shortUrl !== 'undefined' && shortUrl) { var createdUrlParts = String(shortUrl).replace(/^https?:\/\//,'').split('/'); var createdDomain = createdUrlParts[0] || ''; var createdCode = createdUrlParts[1] || ''; %>
+<div class="short-link-display" style="margin-bottom:1rem;">
+  <div>
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.3rem;">YOUR NEW SHORT LINK</div>
+    <span class="link"><%= shortUrl %></span>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <button class="copy-btn" onclick="copyToClipboard('<%= shortUrl %>')">📋 Copy</button>
+    <button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= createdCode %>','<%= createdDomain %>')">📱 QR</button>
+    <a class="btn btn-secondary btn-sm" href="<%= shortUrl %>" target="_blank">↗ Test</a>
+  </div>
+</div>
+<% if(typeof createdLinkId!=='undefined' && createdLinkId){ %>
+<details class="auto-update-box v746-created-auto">
+  <summary>⚡ <span data-i18n-key="automaticUpdate">Automatic Link Update</span></summary>
+  <form action="/links/<%= createdLinkId %>/auto-update" method="POST" class="auto-update-form">
+    <input type="hidden" name="returnTo" value="/shorten-page">
+    <input type="url" name="autoUpdateUrl" placeholder="Next destination URL" required>
+    <input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="20" required>
+    <button class="btn btn-primary btn-sm" type="submit">⚡ <span data-i18n-key="saveAutomaticUpdate">Save Auto Update</span></button>
+  </form>
+</details>
+<% } %>
+<% } %>
                 <div class="glass-card" style="margin-bottom:2rem;"><h3 style="margin-bottom:.5rem;">👁️ Social Preview</h3><p style="color:var(--text-muted);font-size:.9rem;">Supported social crawlers see your short-domain title and a light description; normal visitors still redirect immediately.</p><div style="margin-top:1rem;background:#fff;color:#222;border-radius:14px;overflow:hidden;max-width:560px;box-shadow:var(--shadow);"><div style="height:130px;background:linear-gradient(135deg,#111827,#312e81);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2.3rem;">🔗</div><div style="padding:1rem;"><div style="font-size:.75rem;text-transform:uppercase;color:#777;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></div><strong style="display:block;margin:.25rem 0;"><%= typeof baseDomain !== 'undefined' ? baseDomain : 'thispersonisbrandshortner.com' %></strong><span style="font-size:.85rem;color:#666;">Fast, clean and secure short links powered by THIS PERSON IS BRAND.</span></div></div></div>
                 <h2 style="margin-bottom:1rem;">Recent Short Links</h2>
                 <% if (typeof links !== 'undefined' && links && links.length) { %><% links.forEach(function(link) { %><div class="link-card"><div class="link-top"><div><a class="link-url" href="<%= link.shortUrl %>" target="_blank">🔗 <%= link.shortUrl %></a><div class="link-original">→ <%= link.originalUrl %></div></div><div style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn btn-secondary btn-sm copy-link-btn" data-url="<%= link.shortUrl %>">📋 Copy</button><button class="btn btn-secondary btn-sm" onclick="generateQRForDomain('<%= link.shortCode %>','<%= link.selectedDomain %>')">📱 QR</button><a class="btn btn-primary btn-sm" href="/links/<%= link.id %>/stats"><i class="fas fa-chart-line"></i> Statistics</a></div></div><div class="link-meta"><span>👁️ <%= link.clicks || 0 %> clicks</span><span>🌐 <%= link.selectedDomain || (typeof baseDomain !== 'undefined' ? baseDomain : '') %></span><% if(link.passwordEnabled){ %><span>🔒 Password</span><% } %></div></div><% }); %><% } else { %><div class="glass-card" style="text-align:center;color:var(--text-muted);">No links yet. Create your first one above.</div><% } %>
@@ -6283,39 +6361,153 @@ html[dir="rtl"] .v744-controls{right:auto;left:18px}
 </script>
 
 
-<script id="v744-language-theme">
+<script id="v746-language-theme">
 (function(){
-const T={
- en:{canva_title:"Canva Shortlink",canva_sub:"Shorten Canva share/design URLs using your own premium domains.",canva_url:"Canva URL",short_domain:"Short Domain",custom_code:"Custom Code",create_canva:"Create Canva Shortlink",short_link:"Short Link",canva_note:"This creates your own-domain short link for Canva URLs. It is not a Canva-owned generated URL.",guide_title:"How to create a Canva Shortlink",guide_intro:"Follow these steps to copy a Canva share link and shorten it here.",g1t:"Open your design in Canva",g1d:"Open the design, presentation, poster, video, or other Canva content you want to share.",g2t:"Use the Share button",g2d:"Choose the sharing permission that is appropriate for the people who will receive the link.",g3t:"Copy the Canva share link",g3d:"Copy the Canva share/design URL from Canva.",g4t:"Paste the link above",g4d:"Paste it into Canva URL, select your short domain, and optionally enter a custom code.",g5t:"Create and copy",g5d:"Create the short link and copy it. You can also configure Automatic Link Update immediately.",auto_update:"Automatic Link Update",save_auto:"Save Auto Update"},
- bn:{canva_title:"ক্যানভা শর্টলিংক",canva_sub:"আপনার নিজের প্রিমিয়াম ডোমেইন ব্যবহার করে Canva share/design URL শর্ট করুন।",canva_url:"ক্যানভা URL",short_domain:"শর্ট ডোমেইন",custom_code:"কাস্টম কোড",create_canva:"ক্যানভা শর্টলিংক তৈরি করুন",short_link:"শর্ট লিংক",canva_note:"এটি Canva URL-এর জন্য আপনার নিজের ডোমেইনের শর্ট লিংক তৈরি করে। এটি Canva-এর নিজস্ব তৈরি URL নয়।",guide_title:"কীভাবে Canva Shortlink তৈরি করবেন",guide_intro:"Canva থেকে share link কপি করে এখানে short করার জন্য নিচের ধাপগুলো অনুসরণ করুন।",g1t:"Canva-তে আপনার ডিজাইন খুলুন",g1d:"যে design, presentation, poster, video বা content share করতে চান সেটি খুলুন।",g2t:"Share বাটন ব্যবহার করুন",g2d:"যাদের link দেবেন তাদের জন্য প্রয়োজনীয় sharing permission নির্বাচন করুন।",g3t:"Canva share link কপি করুন",g3d:"Canva থেকে share/design URL কপি করুন।",g4t:"উপরে link paste করুন",g4d:"Canva URL box-এ paste করে short domain এবং চাইলে custom code দিন।",g5t:"Create করে copy করুন",g5d:"Short link তৈরি করে copy করুন। এখান থেকেই Automatic Link Update সেট করতে পারবেন।",auto_update:"অটোমেটিক লিংক আপডেট",save_auto:"অটো আপডেট সেভ করুন"},
- ar:{canva_title:"اختصار روابط Canva",canva_sub:"اختصر روابط Canva باستخدام نطاقاتك المميزة.",canva_url:"رابط Canva",short_domain:"النطاق المختصر",custom_code:"رمز مخصص",create_canva:"إنشاء رابط Canva مختصر",short_link:"الرابط المختصر",canva_note:"ينشئ هذا رابطًا مختصرًا على نطاقك لروابط Canva، وليس رابطًا مملوكًا لـ Canva.",guide_title:"كيفية إنشاء رابط Canva مختصر",guide_intro:"اتبع هذه الخطوات لنسخ رابط المشاركة من Canva واختصاره هنا.",g1t:"افتح تصميمك في Canva",g1d:"افتح التصميم أو العرض أو الملصق أو الفيديو الذي تريد مشاركته.",g2t:"استخدم زر المشاركة",g2d:"اختر صلاحية المشاركة المناسبة للأشخاص الذين سيستلمون الرابط.",g3t:"انسخ رابط Canva",g3d:"انسخ رابط المشاركة أو التصميم من Canva.",g4t:"الصق الرابط أعلاه",g4d:"الصق الرابط واختر النطاق المختصر والرمز المخصص إن أردت.",g5t:"أنشئ الرابط وانسخه",g5d:"أنشئ الرابط المختصر وانسخه، ويمكنك إعداد التحديث التلقائي مباشرةً.",auto_update:"التحديث التلقائي للرابط",save_auto:"حفظ التحديث التلقائي"}
-};
-const common={
- bn:{"Dashboard":"ড্যাশবোর্ড","Short Link":"শর্ট লিংক","My Links":"আমার লিংক","Profile":"প্রোফাইল","Plans":"প্ল্যান","Google Shortlink":"গুগল শর্টলিংক","X Shortlink":"X শর্টলিংক","Canva Shortlink":"ক্যানভা শর্টলিংক","Create Short Link":"শর্ট লিংক তৈরি করুন","Destination URL":"ডেস্টিনেশন URL","Copy":"কপি","Statistics":"স্ট্যাটিস্টিক্স","Settings":"সেটিংস","Logout":"লগআউট","Login":"লগইন","Save":"সেভ","Cancel":"বাতিল","Delete":"ডিলিট","Update":"আপডেট","Clicks":"ক্লিক"},
- ar:{"Dashboard":"لوحة التحكم","Short Link":"رابط مختصر","My Links":"روابطي","Profile":"الملف الشخصي","Plans":"الخطط","Google Shortlink":"اختصار Google","X Shortlink":"اختصار X","Canva Shortlink":"اختصار Canva","Create Short Link":"إنشاء رابط مختصر","Destination URL":"رابط الوجهة","Copy":"نسخ","Statistics":"الإحصائيات","Settings":"الإعدادات","Logout":"تسجيل الخروج","Login":"تسجيل الدخول","Save":"حفظ","Cancel":"إلغاء","Delete":"حذف","Update":"تحديث","Clicks":"النقرات"}
-};
-function applyLang(lang){
- localStorage.setItem("tpib_lang",lang);document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";
- document.querySelectorAll("[data-t]").forEach(e=>{const k=e.dataset.t;if(T[lang]&&T[lang][k])e.textContent=T[lang][k]});
- document.querySelectorAll("a,button,label,h1,h2,h3,h4,span,strong,p,summary").forEach(e=>{
-   if(e.children.length||e.hasAttribute("data-t"))return;
-   if(!e.dataset.v744Original)e.dataset.v744Original=e.textContent;
-   const original=e.dataset.v744Original.trim();
-   if(lang==="en"){e.textContent=e.dataset.v744Original;return}
-   if(common[lang]&&common[lang][original])e.textContent=e.dataset.v744Original.replace(original,common[lang][original]);
- });
- const s=document.getElementById("v744Language");if(s)s.value=lang;
-}
-function applyTheme(theme){
- localStorage.setItem("tpib_theme",theme);document.documentElement.dataset.theme=theme;
- const b=document.getElementById("v744Theme");if(b)b.textContent=theme==="light"?"☀️ Light":"🌙 Dark";
-}
-document.addEventListener("DOMContentLoaded",function(){
- const lang=localStorage.getItem("tpib_lang")||"en",theme=localStorage.getItem("tpib_theme")||"dark";
- applyTheme(theme);applyLang(lang);
- document.getElementById("v744Language")?.addEventListener("change",e=>applyLang(e.target.value));
- document.getElementById("v744Theme")?.addEventListener("click",()=>applyTheme(document.documentElement.dataset.theme==="light"?"dark":"light"));
-});
+  const canvaText={
+    en:{
+      canvaTitle:'Canva Shortlink',
+      canvaSubtitle:'Shorten Canva share/design URLs using your own premium domains.',
+      canvaUrl:'Canva URL',
+      shortDomain:'Short Domain',
+      customCode:'Custom Code',
+      createCanva:'Create Canva Shortlink',
+      shortLink:'Short Link',
+      canvaNote:'This creates your own-domain short link for Canva URLs. It is not a Canva-owned generated URL.',
+      guideTitle:'How to create a Canva Shortlink',
+      guideIntro:'Follow these steps to copy a Canva share link and shorten it here.',
+      g1t:'Open your design in Canva',
+      g1d:'Open the design, presentation, poster, video, or other Canva content you want to share.',
+      g2t:'Use the Share button',
+      g2d:'Choose the sharing permission that is appropriate for the people who will receive the link.',
+      g3t:'Copy the Canva share link',
+      g3d:'Copy the Canva share/design URL from Canva.',
+      g4t:'Paste the link above',
+      g4d:'Paste it into Canva URL, select your short domain, and optionally enter a custom code.',
+      g5t:'Create and copy',
+      g5d:'Create the short link and copy it. You can also configure Automatic Link Update immediately.',
+      automaticUpdate:'Automatic Link Update',
+      saveAutomaticUpdate:'Save Auto Update'
+    },
+    bn:{
+      canvaTitle:'ক্যানভা শর্টলিংক',
+      canvaSubtitle:'আপনার নিজের প্রিমিয়াম ডোমেইন ব্যবহার করে Canva share/design URL শর্ট করুন।',
+      canvaUrl:'ক্যানভা URL',
+      shortDomain:'শর্ট ডোমেইন',
+      customCode:'কাস্টম কোড',
+      createCanva:'ক্যানভা শর্টলিংক তৈরি করুন',
+      shortLink:'শর্ট লিংক',
+      canvaNote:'এটি Canva URL-এর জন্য আপনার নিজের ডোমেইনের শর্ট লিংক তৈরি করে। এটি Canva-এর নিজস্ব তৈরি URL নয়।',
+      guideTitle:'কীভাবে Canva Shortlink তৈরি করবেন',
+      guideIntro:'Canva থেকে share link কপি করে এখানে short করার জন্য নিচের ধাপগুলো অনুসরণ করুন।',
+      g1t:'Canva-তে আপনার ডিজাইন খুলুন',
+      g1d:'যে design, presentation, poster, video বা content share করতে চান সেটি খুলুন।',
+      g2t:'Share বাটন ব্যবহার করুন',
+      g2d:'যাদের link দেবেন তাদের জন্য প্রয়োজনীয় sharing permission নির্বাচন করুন।',
+      g3t:'Canva share link কপি করুন',
+      g3d:'Canva থেকে share/design URL কপি করুন।',
+      g4t:'উপরে link paste করুন',
+      g4d:'Canva URL box-এ paste করে short domain এবং চাইলে custom code দিন।',
+      g5t:'Create করে copy করুন',
+      g5d:'Short link তৈরি করে copy করুন। এখান থেকেই Automatic Link Update সেট করতে পারবেন।',
+      automaticUpdate:'অটোমেটিক লিংক আপডেট',
+      saveAutomaticUpdate:'অটো আপডেট সেভ করুন'
+    },
+    ar:{
+      canvaTitle:'اختصار روابط Canva',
+      canvaSubtitle:'اختصر روابط Canva باستخدام نطاقاتك المميزة.',
+      canvaUrl:'رابط Canva',
+      shortDomain:'النطاق المختصر',
+      customCode:'رمز مخصص',
+      createCanva:'إنشاء رابط Canva مختصر',
+      shortLink:'الرابط المختصر',
+      canvaNote:'ينشئ هذا رابطًا مختصرًا على نطاقك لروابط Canva، وليس رابطًا مملوكًا لـ Canva.',
+      guideTitle:'كيفية إنشاء رابط Canva مختصر',
+      guideIntro:'اتبع هذه الخطوات لنسخ رابط المشاركة من Canva واختصاره هنا.',
+      g1t:'افتح تصميمك في Canva',
+      g1d:'افتح التصميم أو العرض أو الملصق أو الفيديو الذي تريد مشاركته.',
+      g2t:'استخدم زر المشاركة',
+      g2d:'اختر صلاحية المشاركة المناسبة للأشخاص الذين سيستلمون الرابط.',
+      g3t:'انسخ رابط Canva',
+      g3d:'انسخ رابط المشاركة أو التصميم من Canva.',
+      g4t:'الصق الرابط أعلاه',
+      g4d:'الصق الرابط واختر النطاق المختصر والرمز المخصص إن أردت.',
+      g5t:'أنشئ الرابط وانسخه',
+      g5d:'أنشئ الرابط المختصر وانسخه، ويمكنك إعداد التحديث التلقائي مباشرةً.',
+      automaticUpdate:'التحديث التلقائي للرابط',
+      saveAutomaticUpdate:'حفظ التحديث التلقائي'
+    }
+  };
+
+  const common={
+    bn:{
+      'Dashboard':'ড্যাশবোর্ড','Short Link':'শর্ট লিংক','My Links':'আমার লিংক','Profile':'প্রোফাইল',
+      'Plans':'প্ল্যান','Google Shortlink':'গুগল শর্টলিংক','X Shortlink':'X শর্টলিংক','Canva Shortlink':'ক্যানভা শর্টলিংক',
+      'Create Short Link':'শর্ট লিংক তৈরি করুন','Destination URL':'ডেস্টিনেশন URL','Copy':'কপি','Statistics':'স্ট্যাটিস্টিক্স',
+      'Settings':'সেটিংস','Logout':'লগআউট','Login':'লগইন','Save':'সেভ','Cancel':'বাতিল','Delete':'ডিলিট',
+      'Update':'আপডেট','Clicks':'ক্লিক','Real Clicks':'রিয়েল ক্লিক','Premium':'প্রিমিয়াম','Maintenance':'মেইনটেন্যান্স',
+      'Users':'ইউজার','Payments':'পেমেন্ট','Domains':'ডোমেইন','Notifications':'নোটিফিকেশন','Admin Panel':'অ্যাডমিন প্যানেল'
+    },
+    ar:{
+      'Dashboard':'لوحة التحكم','Short Link':'رابط مختصر','My Links':'روابطي','Profile':'الملف الشخصي',
+      'Plans':'الخطط','Google Shortlink':'اختصار Google','X Shortlink':'اختصار X','Canva Shortlink':'اختصار Canva',
+      'Create Short Link':'إنشاء رابط مختصر','Destination URL':'رابط الوجهة','Copy':'نسخ','Statistics':'الإحصائيات',
+      'Settings':'الإعدادات','Logout':'تسجيل الخروج','Login':'تسجيل الدخول','Save':'حفظ','Cancel':'إلغاء','Delete':'حذف',
+      'Update':'تحديث','Clicks':'النقرات','Real Clicks':'النقرات الحقيقية','Premium':'مميز','Maintenance':'صيانة',
+      'Users':'المستخدمون','Payments':'المدفوعات','Domains':'النطاقات','Notifications':'الإشعارات','Admin Panel':'لوحة الإدارة'
+    }
+  };
+
+  function applyLanguage(lang){
+    localStorage.setItem('tpib_language',lang);
+    document.documentElement.lang=lang;
+    document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+
+    document.querySelectorAll('[data-i18n-key]').forEach(function(el){
+      const key=el.getAttribute('data-i18n-key');
+      const value=canvaText[lang]&&canvaText[lang][key];
+      if(value) el.textContent=value;
+    });
+
+    document.querySelectorAll('a,button,label,h1,h2,h3,h4,span,strong,p,summary').forEach(function(el){
+      if(el.children.length || el.hasAttribute('data-i18n-key')) return;
+      if(!el.dataset.tpibOriginal) el.dataset.tpibOriginal=el.textContent;
+      const original=el.dataset.tpibOriginal.trim();
+
+      if(lang==='en'){
+        el.textContent=el.dataset.tpibOriginal;
+        return;
+      }
+
+      const translated=common[lang]&&common[lang][original];
+      if(translated) el.textContent=el.dataset.tpibOriginal.replace(original,translated);
+    });
+
+    const selector=document.getElementById('v746Language');
+    if(selector) selector.value=lang;
+  }
+
+  function applyTheme(theme){
+    localStorage.setItem('tpib_theme',theme);
+    document.documentElement.dataset.theme=theme;
+    const button=document.getElementById('v746Theme');
+    if(button) button.textContent=theme==='light'?'☀️ Light':'🌙 Dark';
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    const lang=localStorage.getItem('tpib_language')||'en';
+    const theme=localStorage.getItem('tpib_theme')||'dark';
+
+    applyTheme(theme);
+    applyLanguage(lang);
+
+    const selector=document.getElementById('v746Language');
+    const button=document.getElementById('v746Theme');
+
+    if(selector) selector.addEventListener('change',function(){ applyLanguage(selector.value); });
+    if(button) button.addEventListener('click',function(){
+      applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+    });
+  });
 })();
 </script>
 
