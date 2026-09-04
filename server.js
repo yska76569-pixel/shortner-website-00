@@ -2577,8 +2577,7 @@ async function processRedirectAnalytics(req,row,link){
 
     if(!bot){
       const clickUpdate=await pool.query(
-        `UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *`,
-        [link.id]
+        'UPDATE links SET clicks=clicks+1,updated_at=NOW() WHERE id=$1 RETURNING *',[link.id]
       );
       pool.query('UPDATE users SET total_clicks=total_clicks+1 WHERE id=$1',[link.userId]).catch(()=>{});
       const fresh=clickUpdate.rowCount?clickUpdate.rows[0]:row;
@@ -2588,22 +2587,16 @@ async function processRedirectAnalytics(req,row,link){
         const switched=await pool.query(
           `UPDATE links SET original_url=auto_update_url,auto_update_enabled=FALSE,
            auto_update_switched_at=NOW(),updated_at=NOW()
-           WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,
-          [link.id]
+           WHERE id=$1 AND auto_update_enabled=TRUE RETURNING original_url`,[link.id]
         );
         if(switched.rowCount){
-          notifyUser(
-            link.userId,
-            'Automatic link update completed',
+          notifyUser(link.userId,'Automatic link update completed',
             `Your short link ${buildShortUrl(link)} reached its click target and the destination was updated automatically.`,
-            'success'
-          ).catch(()=>{});
+            'success').catch(()=>{});
         }
       }
     }
-  }catch(e){
-    console.error('Background redirect analytics error:',e.message||e);
-  }
+  }catch(e){ console.error('Background redirect analytics error:',e.message||e); }
 }
 
 async function handleStoredLinkRedirect(req,res,row){
@@ -2636,8 +2629,7 @@ async function handleStoredLinkRedirect(req,res,row){
       return renderSocialPreview(req,res,link);
     }
 
-    // FAST PATH: send the 302 immediately. Geo lookup, click insert, counters and
-    // auto-update processing continue asynchronously after the visitor is already redirected.
+    // Ultra-fast visitor path: redirect immediately; analytics continues in background.
     res.set('Cache-Control','no-store');
     res.redirect(302,link.originalUrl);
     processRedirectAnalytics(req,row,link).catch(()=>{});
