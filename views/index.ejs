@@ -2995,6 +2995,8 @@ textarea::placeholder{
 .canva-mini-logo{background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b)}
 @media(max-width:800px){.tool-maintenance-grid{grid-template-columns:1fr}}
 
+
+.auto-update-box{width:100%;margin-top:.65rem;padding:.75rem .85rem;border:1px solid rgba(105,130,255,.22);border-radius:14px;background:rgba(79,91,213,.06)}.auto-update-box summary{cursor:pointer;font-weight:800;color:#9fe9ff;list-style:none}.auto-update-box summary::-webkit-details-marker{display:none}.auto-update-form{display:grid;grid-template-columns:minmax(180px,1fr) 110px auto;gap:.55rem;margin-top:.75rem}.auto-update-form input{width:100%;min-width:0;padding:.68rem .75rem;border-radius:10px;border:1px solid var(--glass-border);background:rgba(8,15,35,.72);color:var(--text)}.auto-update-status{margin:.65rem 0;color:var(--text-muted);font-size:.8rem;line-height:1.55;overflow-wrap:anywhere}.auto-update-status strong{color:#9fe9ff}@media(max-width:760px){.auto-update-form{grid-template-columns:1fr}.auto-update-form button{width:100%}}
 </style>
 </head>
 <body>
@@ -3755,6 +3757,16 @@ textarea::placeholder{
                                         <button type="submit" class="btn btn-warning btn-sm">✏️ Update</button>
                                     </div>
                                 </form>
+                                <details class="auto-update-box" <%= link.autoUpdateEnabled ? 'open' : '' %>>
+                                  <summary>⚡ Automatic Link Update <%= link.autoUpdateEnabled ? '• ON' : '' %></summary>
+                                  <form action="/links/<%= linkId %>/auto-update" method="POST" class="auto-update-form">
+                                    <input type="hidden" name="returnTo" value="/dashboard">
+                                    <input type="url" name="autoUpdateUrl" value="<%= link.autoUpdateUrl || '' %>" placeholder="Next destination URL" required>
+                                    <input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="<%= link.autoUpdateThreshold || 20 %>" placeholder="Clicks" required>
+                                    <button class="btn btn-primary btn-sm" type="submit">⚡ Save Auto Update</button>
+                                  </form>
+                                  <% if(link.autoUpdateEnabled){ %><div class="auto-update-status">Will switch after <strong><%= link.autoUpdateThreshold %></strong> new real clicks. Progress: <strong><%= Math.max(0,Number(link.clicks||0)-Number(link.autoUpdateStartClicks||0)) %>/<%= link.autoUpdateThreshold %></strong></div><form action="/links/<%= linkId %>/auto-update/disable" method="POST"><input type="hidden" name="returnTo" value="/dashboard"><button class="btn btn-danger btn-sm" type="submit">Disable Auto Update</button></form><% } %>
+                                </details>
                                 <div class="btn-group">
                                     <form action="/toggle-link/<%= linkId %>" method="POST" style="display: inline;">
                                         <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Toggle this link?')"><%= isActive ? '⏸️' : '▶️' %></button>
@@ -3865,6 +3877,7 @@ textarea::placeholder{
                             <div class="link-meta"><span><i class="fas fa-arrow-pointer"></i> <%= link.clicks || 0 %> clicks</span><span><i class="fas fa-globe"></i> <%= link.selectedDomain %></span><% if(link.linkType==='google_style'){ %><span class="badge badge-active"><i class="fab fa-google"></i> Google Style</span><% } %><% if(link.passwordEnabled){ %><span><i class="fas fa-lock"></i> Password</span><% } %><span class="badge <%= link.isActive ? 'badge-active' : 'badge-inactive' %>"><%= link.isActive ? 'Active' : 'Disabled' %></span></div>
                             <div class="link-actions">
                                 <form action="/links/<%= link.id %>/update" method="POST" class="edit-form"><input type="url" name="originalUrl" value="<%= link.originalUrl %>" required><button class="btn btn-sm btn-secondary" type="submit"><i class="fas fa-pen"></i> Update</button></form>
+                                <details class="auto-update-box" <%= link.autoUpdateEnabled ? 'open' : '' %>><summary>⚡ Automatic Link Update <%= link.autoUpdateEnabled ? '• ON' : '' %></summary><form action="/links/<%= link.id %>/auto-update" method="POST" class="auto-update-form"><input type="hidden" name="returnTo" value="/my-links"><input type="url" name="autoUpdateUrl" value="<%= link.autoUpdateUrl || '' %>" placeholder="Next destination URL" required><input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="<%= link.autoUpdateThreshold || 20 %>" placeholder="Clicks" required><button class="btn btn-primary btn-sm" type="submit">⚡ Save Auto Update</button></form><% if(link.autoUpdateEnabled){ %><div class="auto-update-status">Progress: <strong><%= Math.max(0,Number(link.clicks||0)-Number(link.autoUpdateStartClicks||0)) %>/<%= link.autoUpdateThreshold %></strong> new real clicks</div><form action="/links/<%= link.id %>/auto-update/disable" method="POST"><input type="hidden" name="returnTo" value="/my-links"><button class="btn btn-danger btn-sm" type="submit">Disable Auto Update</button></form><% } %></details>
                                 <div class="btn-group"><a class="btn btn-sm btn-primary" href="/links/<%= link.id %>/stats"><i class="fas fa-chart-line"></i> Statistics</a><form action="/links/<%= link.id %>/toggle" method="POST"><button class="btn btn-sm btn-secondary" type="submit"><%= link.isActive ? 'Disable' : 'Enable' %></button></form><form action="/links/<%= link.id %>/delete" method="POST" onsubmit="return confirm('Delete this short link?')"><button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-trash"></i> Delete</button></form></div>
                             </div>
                         </div>
@@ -3924,6 +3937,7 @@ textarea::placeholder{
         </div>
         <button class="btn btn-primary btn-sm" type="submit"><i class="fas fa-floppy-disk"></i> Update Link</button>
       </form>
+      <details class="auto-update-box stats-auto-update" <%= link.autoUpdateEnabled ? 'open' : '' %>><summary>⚡ Automatic Link Update <%= link.autoUpdateEnabled ? '• ON' : '' %></summary><form action="/links/<%= link.id %>/auto-update" method="POST" class="auto-update-form"><input type="hidden" name="returnTo" value="/links/<%= link.id %>/stats"><input type="url" name="autoUpdateUrl" value="<%= link.autoUpdateUrl || '' %>" placeholder="Next destination URL" required><input type="number" name="autoUpdateThreshold" min="1" max="1000000" value="<%= link.autoUpdateThreshold || 20 %>" required><button class="btn btn-primary btn-sm" type="submit">Save Automatic Update</button></form><% if(link.autoUpdateEnabled){ %><div class="auto-update-status">Next URL: <span><%= link.autoUpdateUrl %></span><br>Switch after <strong><%= link.autoUpdateThreshold %></strong> new real clicks • Progress <strong><%= Math.max(0,Number(link.clicks||0)-Number(link.autoUpdateStartClicks||0)) %>/<%= link.autoUpdateThreshold %></strong></div><form action="/links/<%= link.id %>/auto-update/disable" method="POST"><input type="hidden" name="returnTo" value="/links/<%= link.id %>/stats"><button class="btn btn-danger btn-sm" type="submit">Disable Auto Update</button></form><% } %></details>
     </div>
 
     <div class="my-links-summary per-link-summary">
