@@ -3020,6 +3020,113 @@ html[data-theme="light"] h1,html[data-theme="light"] h2,html[data-theme="light"]
 html[data-theme="light"] input,html[data-theme="light"] select,html[data-theme="light"] textarea,html[data-theme="light"] .form-control{background:#fff!important;color:#172033!important;border-color:rgba(20,30,50,.18)!important}
 html[data-theme="light"] .v746-ui-controls{background:rgba(255,255,255,.96)}
 html[data-theme="light"] .v746-ui-controls select,html[data-theme="light"] .v746-ui-controls button{background:#fff;color:#172033}
+
+html[data-theme="light"]{
+  --bg-primary:#f4f7fb;
+  --bg-secondary:#ffffff;
+  --card-bg:#ffffff;
+  --text-primary:#111827;
+  --text-secondary:#374151;
+  --text-muted:#667085;
+  --glass-border:#d8dee9;
+}
+html[data-theme="light"] body,
+html[data-theme="light"] .main-content,
+html[data-theme="light"] .content{background:#f4f7fb!important;color:#111827!important}
+html[data-theme="light"] .glass-card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .link-card,
+html[data-theme="light"] .profile-card,
+html[data-theme="light"] .plan-card,
+html[data-theme="light"] .admin-card,
+html[data-theme="light"] .google-style-card,
+html[data-theme="light"] .payment-card,
+html[data-theme="light"] .modal-content,
+html[data-theme="light"] .dropdown-menu{
+  background:#ffffff!important;
+  color:#111827!important;
+  border:1px solid #d8dee9!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.08)!important;
+}
+html[data-theme="light"] .sidebar{
+  background:#ffffff!important;
+  color:#111827!important;
+  border-right:1px solid #d8dee9!important;
+}
+html[data-theme="light"] .topbar,
+html[data-theme="light"] .header,
+html[data-theme="light"] nav{
+  background:rgba(255,255,255,.97)!important;
+  color:#111827!important;
+  border-color:#d8dee9!important;
+}
+html[data-theme="light"] .sidebar a,
+html[data-theme="light"] .nav-link,
+html[data-theme="light"] .menu-item,
+html[data-theme="light"] .dropdown-item{
+  color:#344054!important;
+}
+html[data-theme="light"] .sidebar a:hover,
+html[data-theme="light"] .nav-link:hover,
+html[data-theme="light"] .menu-item:hover,
+html[data-theme="light"] .dropdown-item:hover{
+  background:#eef2f7!important;
+  color:#101828!important;
+}
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6,
+html[data-theme="light"] .title,
+html[data-theme="light"] .number,
+html[data-theme="light"] strong{color:#101828!important}
+html[data-theme="light"] p,
+html[data-theme="light"] .label,
+html[data-theme="light"] .muted,
+html[data-theme="light"] .text-muted,
+html[data-theme="light"] small{color:#667085!important}
+html[data-theme="light"] .link,
+html[data-theme="light"] code{
+  color:#3448c5!important;
+  background:#f1f4ff!important;
+  border-color:#d8defd!important;
+}
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea,
+html[data-theme="light"] .form-control{
+  background:#ffffff!important;
+  color:#111827!important;
+  border:1px solid #cfd6e2!important;
+  box-shadow:none!important;
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{color:#98a2b3!important}
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus,
+html[data-theme="light"] .form-control:focus{
+  border-color:#667eea!important;
+  box-shadow:0 0 0 3px rgba(102,126,234,.14)!important;
+}
+html[data-theme="light"] table{background:#fff!important;color:#111827!important}
+html[data-theme="light"] th{background:#f8fafc!important;color:#344054!important;border-color:#e4e7ec!important}
+html[data-theme="light"] td{color:#344054!important;border-color:#eaecf0!important}
+html[data-theme="light"] tr:hover td{background:#f9fafb!important}
+html[data-theme="light"] .auto-update-box,
+html[data-theme="light"] .v746-guide-step,
+html[data-theme="light"] details{
+  background:#f8fafc!important;
+  color:#344054!important;
+  border-color:#d8dee9!important;
+}
+html[data-theme="light"] .badge,
+html[data-theme="light"] .status-badge{border-color:rgba(15,23,42,.12)!important}
+html[data-theme="light"] hr{border-color:#e4e7ec!important}
+html[data-theme="light"] .footer{color:#667085!important;border-color:#e4e7ec!important}
+
 html[dir="rtl"] body{text-align:right}
 html[dir="rtl"] .v746-ui-controls{right:auto;left:18px}
 .v746-canva-guide{margin-top:1.25rem}
@@ -4897,6 +5004,12 @@ html[dir="rtl"] .v746-ui-controls{right:auto;left:18px}
                 <div class="stat-card"><div class="number"><%= adminStats.totalClicks %></div><div class="label">Real Clicks</div></div>
                 <div class="stat-card"><div class="number"><%= adminStats.botClicks %></div><div class="label">Bot Clicks</div></div>
                 <div class="stat-card"><div class="number"><%= adminStats.pendingPayments %></div><div class="label">Pending Payments</div></div>
+                <% if(typeof redirectPerf!=='undefined' && redirectPerf){ %>
+                <div class="stat-card"><div class="number"><%= redirectPerf.cacheHitRate %>%</div><div class="label">Redirect Cache Hit</div></div>
+                <div class="stat-card"><div class="number"><%= redirectPerf.avgLookupMs %> ms</div><div class="label">Avg Redirect Lookup</div></div>
+                <div class="stat-card"><div class="number"><%= redirectPerf.dbRetries %></div><div class="label">DB Auto Retries</div></div>
+                <div class="stat-card"><div class="number"><%= redirectPerf.duplicateFiltered %></div><div class="label">Duplicate Clicks Filtered</div></div>
+                <% } %>
             </div>
 
 
@@ -6490,7 +6603,11 @@ html[dir="rtl"] .v746-ui-controls{right:auto;left:18px}
     localStorage.setItem('tpib_theme',theme);
     document.documentElement.dataset.theme=theme;
     const button=document.getElementById('v746Theme');
-    if(button) button.textContent=theme==='light'?'☀️ Light':'🌙 Dark';
+    if(button){
+      const lang=localStorage.getItem('tpib_language')||'en';
+      const names={en:{light:'Light',dark:'Dark'},bn:{light:'লাইট',dark:'ডার্ক'},ar:{light:'فاتح',dark:'داكن'}};
+      button.textContent=theme==='light'?'☀️ '+(names[lang]?.light||'Light'):'🌙 '+(names[lang]?.dark||'Dark');
+    }
   }
 
   document.addEventListener('DOMContentLoaded',function(){
@@ -6503,7 +6620,7 @@ html[dir="rtl"] .v746-ui-controls{right:auto;left:18px}
     const selector=document.getElementById('v746Language');
     const button=document.getElementById('v746Theme');
 
-    if(selector) selector.addEventListener('change',function(){ applyLanguage(selector.value); });
+    if(selector) selector.addEventListener('change',function(){ applyLanguage(selector.value); applyTheme(document.documentElement.dataset.theme||'dark'); });
     if(button) button.addEventListener('click',function(){
       applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
     });
