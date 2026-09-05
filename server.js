@@ -126,7 +126,131 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000
 });
+
 pool.on('error', err => console.error('PostgreSQL pool error:', err.message));
+
+// ===== V7.47 REDIRECT RELIABILITY / CACHE =====
+const REDIRECT_CACHE_TTL_MS = Math.max(3000, Number(process.env.REDIRECT_CACHE_TTL_MS || 15000));
+const REDIRECT_CACHE_MAX = Math.max(100, Number(process.env.REDIRECT_CACHE_MAX || 5000));
+const redirectCache = new Map();
+const recentRealClickSignatures = new Map();
+const redirectPerf = {
+  startedAt: Date.now(),
+  requests: 0,
+  cacheHits: 0,
+  cacheMisses: 0,
+  dbRetries: 0,
+  dbFailures: 0,
+  lookupTotalMs: 0,
+  lookupSamples: 0,
+  duplicateFiltered: 0
+};
+
+function redirectCacheKey(domain, code){
+  return `${normalizeHost(domain)}::${String(code||'')}`;
+}
+function getCachedRedirect(domain,code){
+  const key=redirectCacheKey(domain,code);
+  const item=redirectCache.get(key);
+  if(!item) return null;
+  if(item.expiresAt<=Date.now()){
+    redirectCache.delete(key);
+    return null;
+  }
+  // Simple LRU touch.
+  redirectCache.delete(key);
+  redirectCache.set(key,item);
+  return item.row;
+}
+function setCachedRedirect(domain,code,row){
+  const key=redirectCacheKey(domain,code);
+  redirectCache.delete(key);
+  redirectCache.set(key,{row,expiresAt:Date.now()+REDIRECT_CACHE_TTL_MS});
+  while(redirectCache.size>REDIRECT_CACHE_MAX){
+    const first=redirectCache.keys().next().value;
+    if(first===undefined) break;
+    redirectCache.delete(first);
+  }
+}
+function invalidateRedirectCache(domain,code){
+  redirectCache.delete(redirectCacheKey(domain,code));
+}
+function isTransientDbError(err){
+  const message=String(err?.message||err||'').toLowerCase();
+  const code=String(err?.code||'').toUpperCase();
+  return ['ECONNRESET','ECONNREFUSED','ETIMEDOUT','57P01','57P02','57P03','08000','08003','08006'].includes(code) ||
+    /connection terminated|connection reset|socket hang up|server closed the connection|terminating connection|timeout/.test(message);
+}
+async function redirectQueryWithRetry(text,params,retries=2){
+  let lastErr;
+  for(let attempt=0;attempt<=retries;attempt++){
+    try{
+      return await pool.query(text,params);
+    }catch(err){
+      lastErr=err;
+      if(!isTransientDbError(err) || attempt>=retries){
+        redirectPerf.dbFailures++;
+        throw err;
+      }
+      redirectPerf.dbRetries++;
+      await new Promise(r=>setTimeout(r,80*(attempt+1)));
+    }
+  }
+  throw lastErr;
+}
+async function findRedirectRow(domain,code){
+  redirectPerf.requests++;
+  const t0=Date.now();
+  const cached=getCachedRedirect(domain,code);
+  if(cached){
+    redirectPerf.cacheHits++;
+    redirectPerf.lookupTotalMs += (Date.now()-t0);
+    redirectPerf.lookupSamples++;
+    return cached;
+  }
+  redirectPerf.cacheMisses++;
+  const q=await redirectQueryWithRetry(
+    'SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',
+    [normalizeHost(domain),String(code||'')]
+  );
+  redirectPerf.lookupTotalMs += (Date.now()-t0);
+  redirectPerf.lookupSamples++;
+  if(!q.rowCount) return null;
+  setCachedRedirect(domain,code,q.rows[0]);
+  return q.rows[0];
+}
+function isDuplicateRealClick(linkId,ip,ua){
+  const now=Date.now();
+  const signature=`${linkId}|${String(ip||'')}|${String(ua||'').slice(0,220)}`;
+  const previous=recentRealClickSignatures.get(signature)||0;
+  recentRealClickSignatures.set(signature,now);
+  // Keep map bounded and prune old entries opportunistically.
+  if(recentRealClickSignatures.size>15000){
+    const cutoff=now-60000;
+    for(const [k,v] of recentRealClickSignatures){
+      if(v<cutoff) recentRealClickSignatures.delete(k);
+      if(recentRealClickSignatures.size<=10000) break;
+    }
+  }
+  const duplicate=previous && (now-previous)<8000;
+  if(duplicate) redirectPerf.duplicateFiltered++;
+  return !!duplicate;
+}
+function getRedirectPerfStats(){
+  const total=redirectPerf.cacheHits+redirectPerf.cacheMisses;
+  return {
+    cacheSize:redirectCache.size,
+    cacheHitRate:total?Math.round((redirectPerf.cacheHits/total)*1000)/10:0,
+    cacheHits:redirectPerf.cacheHits,
+    cacheMisses:redirectPerf.cacheMisses,
+    dbRetries:redirectPerf.dbRetries,
+    dbFailures:redirectPerf.dbFailures,
+    duplicateFiltered:redirectPerf.duplicateFiltered,
+    avgLookupMs:redirectPerf.lookupSamples?Math.round((redirectPerf.lookupTotalMs/redirectPerf.lookupSamples)*10)/10:0,
+    uptimeMinutes:Math.floor((Date.now()-redirectPerf.startedAt)/60000)
+  };
+}
+
 
 const sessionStore = new pgSession({
   pool,
@@ -872,9 +996,10 @@ function validateDestinationUrl(raw){
   try{
     const u=new URL(String(raw||''));
     if(!['http:','https:'].includes(u.protocol)) return 'Only http:// or https:// links are allowed.';
+    if(u.username || u.password) return 'URLs containing embedded usernames/passwords are not allowed.';
     const host=normalizeHost(u.hostname);
     if(!host) return 'Invalid destination host.';
-    if(isPrivateHostname(host)) return 'Private/local network URLs are not allowed.';
+    if(isPrivateHostname(host) || host==='[::1]' || /^169\.254\./.test(host)) return 'Private/local network URLs are not allowed.';
     if(AVAILABLE_DOMAINS.map(normalizeHost).includes(host)) return 'Shortener domains cannot be used as destination URLs.';
     if(BLOCKED_DOMAINS.includes(host) || BLOCKED_DOMAINS.some(d=>host.endsWith('.'+d))) return 'This destination domain is blocked by the administrator.';
     if(String(raw).length>4096) return 'Destination URL is too long.';
@@ -2303,6 +2428,7 @@ app.get('/admin', adminMiddleware, async (req,res)=>{
       canvaToolMaintenance:String((toolMaintenanceR.rows.find(r=>r.setting_key==='canva_tool_maintenance')||{}).setting_value||'off').toLowerCase()==='on',
 
       adminStats:{totalUsers:users.length,online:active.length,totalLinks:linksR.rows.length,totalClicks:Number(totalClicksR.rows[0].count),botClicks:Number(botClicksR.rows[0].count),pendingPayments:payR.rows.filter(p=>p.status==='pending').length},
+      redirectPerf:getRedirectPerfStats(),
       freeLinkLimit:FREE_LINK_LIMIT,plan1Price:PLAN_1_PRICE,plan3Price:PLAN_3_PRICE,plan12Price:PLAN_12_PRICE,plan1Usd:PLAN_1_USD,plan3Usd:PLAN_3_USD,plan12Usd:PLAN_12_USD,bkashNumber:BKASH_NUMBER,nagadNumber:NAGAD_NUMBER,binanceId:BINANCE_ID
     });
   }catch(e){console.error('Admin page error:',e);res.redirect('/admin/login?error='+encodeURIComponent('Admin page database error'));}
@@ -2565,7 +2691,9 @@ async function processRedirectAnalytics(req,row,link){
     const ip=getRealClientIp(req);
     const ua=req.headers['user-agent']||'';
     const ref=req.headers['referer']||req.headers['referrer']||'';
-    const bot=isLikelyAutomatedRequest(req,ua);
+    const automated=isLikelyAutomatedRequest(req,ua);
+    const duplicate=!automated && isDuplicateRealClick(link.id,ip,ua);
+    const bot=automated || duplicate;
     const di=getDeviceInfo(ua);
     const geo=await resolveVisitorGeo(req,ip);
 
@@ -2597,6 +2725,7 @@ async function processRedirectAnalytics(req,row,link){
         );
 
         if(switched.rowCount){
+          invalidateRedirectCache(link.selectedDomain||row.selected_domain,link.shortCode||row.short_code);
           notifyUser(
             link.userId,
             'Automatic link update completed',
@@ -2662,13 +2791,10 @@ app.get('/share.google',async(req,res)=>{
     if(!code) return res.status(400).send('Missing q parameter');
 
     const requestHost=normalizeHost(req.get('host'));
-    const q=await pool.query(
-      'SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',
-      [requestHost,code]
-    );
-    if(!q.rowCount) return res.status(404).send('Link not found or inactive');
+    const row=await findRedirectRow(requestHost,code);
+    if(!row) return res.status(404).send('Link not found or inactive');
 
-    return handleStoredLinkRedirect(req,res,q.rows[0]);
+    return handleStoredLinkRedirect(req,res,row);
   }catch(e){
     console.error('Google-style redirect error:',e);
     return res.status(500).send('Error redirecting');
@@ -2681,13 +2807,10 @@ app.get('/:code',async(req,res)=>{
     if(['favicon.ico','robots.txt','sitemap.xml'].includes(code)) return res.status(404).send('Not found');
 
     const requestHost=normalizeHost(req.get('host'));
-    const q=await pool.query(
-      'SELECT * FROM links WHERE selected_domain=$1 AND short_code=$2 AND is_active=TRUE LIMIT 1',
-      [requestHost,code]
-    );
-    if(!q.rowCount) return res.status(404).send('Link not found or inactive');
+    const row=await findRedirectRow(requestHost,code);
+    if(!row) return res.status(404).send('Link not found or inactive');
 
-    return handleStoredLinkRedirect(req,res,q.rows[0]);
+    return handleStoredLinkRedirect(req,res,row);
   }catch(e){
     console.error('Redirect error:',e);
     return res.status(500).send('Error redirecting');
